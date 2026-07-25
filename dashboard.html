@@ -54,27 +54,28 @@
                     </button>
                 </div>
             </div>
-            <!-- Add this after the profile summary section -->
-<div class="kyc-status-card" id="kycStatusCard">
-    <div class="kyc-status-header">
-        <h3><i class="fas fa-id-card"></i> KYC Verification Status</h3>
-        <span id="kycStatusBadge" class="status-badge status-pending">PENDING</span>
-    </div>
-    <div class="kyc-status-content">
-        <div id="kycStatusMessage">
-            <p>Your KYC verification is pending. Please upload your documents to get verified.</p>
-        </div>
-        <div id="kycActionButtons">
-            <button class="btn btn-primary" onclick="startKYC()">
-                <i class="fas fa-upload"></i> Submit Documents
-            </button>
-        </div>
-        <div id="kycSubmittedInfo" style="display:none;">
-            <p><i class="fas fa-check-circle" style="color: var(--success);"></i> Your documents have been submitted for verification.</p>
-            <p><small>Submitted on: <span id="kycSubmittedDate"></span></small></p>
-        </div>
-    </div>
-</div>
+
+            <!-- KYC Status Card -->
+            <div class="kyc-status-card" id="kycStatusCard">
+                <div class="kyc-status-header">
+                    <h3><i class="fas fa-id-card"></i> KYC Verification Status</h3>
+                    <span id="kycStatusBadge" class="status-badge status-pending">PENDING</span>
+                </div>
+                <div class="kyc-status-content">
+                    <div id="kycStatusMessage">
+                        <p>Your KYC verification is pending. Please upload your documents to get verified.</p>
+                    </div>
+                    <div id="kycActionButtons">
+                        <button class="btn btn-primary" onclick="startKYC()">
+                            <i class="fas fa-upload"></i> Submit Documents
+                        </button>
+                    </div>
+                    <div id="kycSubmittedInfo" style="display:none;">
+                        <p><i class="fas fa-check-circle" style="color: var(--success);"></i> Your documents have been submitted for verification.</p>
+                        <p><small>Submitted on: <span id="kycSubmittedDate"></span></small></p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Stats Grid -->
             <div class="stats-grid">
