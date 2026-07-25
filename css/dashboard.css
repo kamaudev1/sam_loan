@@ -5,7 +5,6 @@
     background: var(--bg-light);
 }
 
-/* Profile Summary */
 .profile-summary {
     background: white;
     border-radius: var(--radius);
@@ -78,7 +77,6 @@
     gap: 0.5rem;
 }
 
-/* Stats Grid */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -86,7 +84,7 @@
     margin-bottom: 2rem;
 }
 
-.stat-card {
+.stats-grid .stat-card {
     background: white;
     border-radius: var(--radius);
     padding: 1.5rem;
@@ -97,12 +95,12 @@
     transition: var(--transition);
 }
 
-.stat-card:hover {
+.stats-grid .stat-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 15px 40px rgba(0,0,0,0.15);
 }
 
-.stat-icon {
+.stats-grid .stat-icon {
     width: 50px;
     height: 50px;
     border-radius: 12px;
@@ -113,17 +111,16 @@
     flex-shrink: 0;
 }
 
-.stat-info h3 {
+.stats-grid .stat-info h3 {
     font-size: 1.5rem;
     color: var(--text-primary);
 }
 
-.stat-info p {
+.stats-grid .stat-info p {
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
-/* Loan Application */
 .loan-application {
     background: white;
     border-radius: var(--radius);
@@ -194,7 +191,6 @@
     color: var(--text-primary);
 }
 
-/* Loan List */
 .loan-history {
     background: white;
     border-radius: var(--radius);
@@ -278,7 +274,6 @@
     margin-bottom: 1rem;
 }
 
-/* Status Badges */
 .status-badge {
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
@@ -317,7 +312,6 @@
     color: #1b5e20;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .profile-summary {
         flex-direction: column;
