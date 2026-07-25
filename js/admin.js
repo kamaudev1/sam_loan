@@ -1,4 +1,4 @@
-// js/admin.js - Complete Working Version
+// js/admin.js - Complete Working Version with Separate Queries
 let currentTab = 'pending';
 let adminUser = null;
 
@@ -148,160 +148,32 @@ function switchTab(tab) {
     }
 }
 
-// ============ PENDING LOANS ============
+// ============ LOAN FUNCTIONS ============
 async function loadPendingLoans() {
-    try {
-        console.log('Loading pending loans...');
-        
-        // Get all pending loans with user data using a single query
-        const { data: loans, error } = await supabaseClient
-            .from('loans')
-            .select(`
-                *,
-                users:user_id (
-                    full_name,
-                    email,
-                    phone,
-                    id_number,
-                    profile_picture_url
-                )
-            `)
-            .eq('status', 'pending')
-            .order('application_date', { ascending: false });
-        
-        if (error) {
-            console.error('Error fetching pending loans:', error);
-            throw error;
-        }
-        
-        console.log('Pending loans data:', loans);
-        
-        const container = document.getElementById('pendingLoansList');
-        const countDisplay = document.getElementById('pendingCountDisplay');
-        
-        if (countDisplay) {
-            countDisplay.textContent = `${loans?.length || 0} applications`;
-        }
-        
-        if (!container) {
-            console.error('Container pendingLoansList not found');
-            return;
-        }
-        
-        if (!loans || loans.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-check-circle"></i>
-                    <p>No pending applications</p>
-                    <p class="subtext">All caught up!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Generate HTML for each loan
-        let html = '';
-        loans.forEach(loan => {
-            const user = loan.users || {};
-            html += `
-            <div class="loan-card">
-                <div class="loan-card-header">
-                    <div>
-                        <h3>${user.full_name || 'Unknown User'}</h3>
-                        <div class="user-info">
-                            <span>${user.email || 'No email'}</span>
-                            <span>•</span>
-                            <span>ID: ${user.id_number || 'N/A'}</span>
-                        </div>
-                    </div>
-                    <span class="status-badge status-pending">PENDING</span>
-                </div>
-                <div class="loan-card-details">
-                    <p>
-                        <strong>Amount</strong>
-                        KES ${loan.amount ? loan.amount.toLocaleString() : '0'}
-                    </p>
-                    <p>
-                        <strong>Purpose</strong>
-                        ${loan.purpose || 'N/A'}
-                    </p>
-                    <p>
-                        <strong>Tenure</strong>
-                        ${loan.tenure || 0} months
-                    </p>
-                    <p>
-                        <strong>Applied</strong>
-                        ${loan.application_date ? new Date(loan.application_date).toLocaleDateString() : 'N/A'}
-                    </p>
-                    <p>
-                        <strong>Phone</strong>
-                        ${user.phone || 'N/A'}
-                    </p>
-                </div>
-                <div class="loan-card-actions">
-                    <button class="btn-approve" onclick="openActionModal('${loan.id}', 'approve')">
-                        <i class="fas fa-check"></i> Approve
-                    </button>
-                    <button class="btn-reject" onclick="openActionModal('${loan.id}', 'reject')">
-                        <i class="fas fa-times"></i> Reject
-                    </button>
-                </div>
-            </div>
-        `;
-        });
-        
-        container.innerHTML = html;
-        console.log('Pending loans rendered successfully');
-        
-    } catch (error) {
-        console.error('Error loading pending loans:', error);
-        const container = document.getElementById('pendingLoansList');
-        if (container) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-exclamation-circle" style="color: var(--danger);"></i>
-                    <p>Error loading pending loans</p>
-                    <p class="subtext">${error.message}</p>
-                </div>
-            `;
-        }
-        showToast('Error loading pending loans: ' + error.message, 'error');
-    }
+    await loadLoansByStatus('pending', 'pendingLoansList', 'pendingCountDisplay');
 }
 
-// ============ APPROVED LOANS ============
 async function loadApprovedLoans() {
     await loadLoansByStatus('approved', 'approvedLoansList', 'approvedCountDisplay');
 }
 
-// ============ DISBURSED LOANS ============
 async function loadDisbursedLoans() {
     await loadLoansByStatus('disbursed', 'disbursedLoansList', 'disbursedCountDisplay');
 }
 
-// ============ REJECTED LOANS ============
 async function loadRejectedLoans() {
     await loadLoansByStatus('rejected', 'rejectedLoansList', 'rejectedCountDisplay');
 }
 
-// ============ LOANS BY STATUS ============
+// ============ LOANS BY STATUS - FIXED VERSION ============
 async function loadLoansByStatus(status, containerId, countId) {
     try {
         console.log(`Loading ${status} loans...`);
         
-        // Get loans with user data using a single query
+        // Step 1: Get all loans with the given status
         const { data: loans, error } = await supabaseClient
             .from('loans')
-            .select(`
-                *,
-                users:user_id (
-                    full_name,
-                    email,
-                    phone,
-                    id_number,
-                    profile_picture_url
-                )
-            `)
+            .select('*')
             .eq('status', status)
             .order('application_date', { ascending: false });
         
@@ -310,13 +182,44 @@ async function loadLoansByStatus(status, containerId, countId) {
             throw error;
         }
         
-        console.log(`${status} loans data:`, loans);
+        console.log(`Found ${loans?.length || 0} ${status} loans`);
         
+        // Step 2: Get user data for each loan
+        const loansWithUsers = [];
+        if (loans && loans.length > 0) {
+            for (const loan of loans) {
+                let userData = null;
+                if (loan.user_id) {
+                    try {
+                        // Get user data separately
+                        const { data: user, error: userError } = await supabaseClient
+                            .from('users')
+                            .select('full_name, email, phone, id_number, profile_picture_url')
+                            .eq('id', loan.user_id)
+                            .single();
+                        
+                        if (userError) {
+                            console.warn(`User not found for loan ${loan.id}:`, userError);
+                        } else {
+                            userData = user;
+                        }
+                    } catch (e) {
+                        console.warn(`Error fetching user for loan ${loan.id}:`, e);
+                    }
+                }
+                loansWithUsers.push({
+                    ...loan,
+                    user: userData
+                });
+            }
+        }
+        
+        // Update UI
         const container = document.getElementById(containerId);
         const countDisplay = document.getElementById(countId);
         
         if (countDisplay) {
-            countDisplay.textContent = `${loans?.length || 0} applications`;
+            countDisplay.textContent = `${loansWithUsers.length} applications`;
         }
         
         if (!container) {
@@ -324,7 +227,7 @@ async function loadLoansByStatus(status, containerId, countId) {
             return;
         }
         
-        if (!loans || loans.length === 0) {
+        if (loansWithUsers.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -338,10 +241,10 @@ async function loadLoansByStatus(status, containerId, countId) {
                            status === 'disbursed' ? 'disbursed' : 
                            status === 'rejected' ? 'rejected' : 'pending';
         
-        // Generate HTML for each loan
+        // Generate HTML
         let html = '';
-        loans.forEach(loan => {
-            const user = loan.users || {};
+        loansWithUsers.forEach(loan => {
+            const user = loan.user || {};
             html += `
             <div class="loan-card">
                 <div class="loan-card-header">
@@ -371,6 +274,10 @@ async function loadLoansByStatus(status, containerId, countId) {
                     <p>
                         <strong>Applied</strong>
                         ${loan.application_date ? new Date(loan.application_date).toLocaleDateString() : 'N/A'}
+                    </p>
+                    <p>
+                        <strong>Phone</strong>
+                        ${user.phone || 'N/A'}
                     </p>
                     ${loan.approval_date ? `
                         <p>
