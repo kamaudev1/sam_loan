@@ -14,7 +14,6 @@ async function checkAdminAuth() {
         return;
     }
     
-    // Check if user is admin
     const { data: userData, error } = await supabaseClient
         .from('users')
         .select('role')
@@ -30,14 +29,12 @@ async function checkAdminAuth() {
 
 async function loadAdminStats() {
     try {
-        // Get counts
         const [{ count: pendingCount }, { count: userCount }, { count: kycCount }] = await Promise.all([
             supabaseClient.from('loans').select('*', { count: 'exact' }).eq('status', 'pending'),
             supabaseClient.from('users').select('*', { count: 'exact' }),
             supabaseClient.from('users').select('*', { count: 'exact' }).eq('kyc_verified', true)
         ]);
         
-        // Get total disbursed
         const { data: disbursedLoans } = await supabaseClient
             .from('loans')
             .select('amount')
@@ -59,7 +56,6 @@ async function loadAdminStats() {
 function switchTab(tab) {
     currentTab = tab;
     
-    // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.tab === tab) {
@@ -67,7 +63,6 @@ function switchTab(tab) {
         }
     });
     
-    // Update content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
         content.style.display = 'none';
@@ -79,7 +74,6 @@ function switchTab(tab) {
         targetContent.style.display = 'block';
     }
     
-    // Load data based on tab
     switch(tab) {
         case 'pending':
             loadPendingLoans();
@@ -149,26 +143,11 @@ async function loadPendingLoans() {
                     <span class="status-badge status-pending">PENDING</span>
                 </div>
                 <div class="loan-card-details">
-                    <p>
-                        <strong>Amount</strong>
-                        KES ${loan.amount.toLocaleString()}
-                    </p>
-                    <p>
-                        <strong>Purpose</strong>
-                        ${loan.purpose}
-                    </p>
-                    <p>
-                        <strong>Tenure</strong>
-                        ${loan.tenure} months
-                    </p>
-                    <p>
-                        <strong>Applied</strong>
-                        ${new Date(loan.application_date).toLocaleDateString()}
-                    </p>
-                    <p>
-                        <strong>Phone</strong>
-                        ${loan.users?.phone || 'N/A'}
-                    </p>
+                    <p><strong>Amount</strong> KES ${loan.amount.toLocaleString()}</p>
+                    <p><strong>Purpose</strong> ${loan.purpose}</p>
+                    <p><strong>Tenure</strong> ${loan.tenure} months</p>
+                    <p><strong>Applied</strong> ${new Date(loan.application_date).toLocaleDateString()}</p>
+                    <p><strong>Phone</strong> ${loan.users?.phone || 'N/A'}</p>
                 </div>
                 <div class="loan-card-actions">
                     <button class="btn-approve" onclick="openActionModal('${loan.id}', 'approve')">
@@ -176,9 +155,6 @@ async function loadPendingLoans() {
                     </button>
                     <button class="btn-reject" onclick="openActionModal('${loan.id}', 'reject')">
                         <i class="fas fa-times"></i> Reject
-                    </button>
-                    <button class="btn-view" onclick="viewUserProfile('${loan.user_id}')">
-                        <i class="fas fa-user"></i> View Profile
                     </button>
                 </div>
             </div>
@@ -250,34 +226,12 @@ async function loadLoansByStatus(status, containerId, countId) {
                     <span class="status-badge status-${status}">${status.toUpperCase()}</span>
                 </div>
                 <div class="loan-card-details">
-                    <p>
-                        <strong>Amount</strong>
-                        KES ${loan.amount.toLocaleString()}
-                    </p>
-                    <p>
-                        <strong>Purpose</strong>
-                        ${loan.purpose}
-                    </p>
-                    <p>
-                        <strong>Tenure</strong>
-                        ${loan.tenure} months
-                    </p>
-                    <p>
-                        <strong>Applied</strong>
-                        ${new Date(loan.application_date).toLocaleDateString()}
-                    </p>
-                    ${loan.approval_date ? `
-                        <p>
-                            <strong>Approved</strong>
-                            ${new Date(loan.approval_date).toLocaleDateString()}
-                        </p>
-                    ` : ''}
-                    ${loan.disbursement_date ? `
-                        <p>
-                            <strong>Disbursed</strong>
-                            ${new Date(loan.disbursement_date).toLocaleDateString()}
-                        </p>
-                    ` : ''}
+                    <p><strong>Amount</strong> KES ${loan.amount.toLocaleString()}</p>
+                    <p><strong>Purpose</strong> ${loan.purpose}</p>
+                    <p><strong>Tenure</strong> ${loan.tenure} months</p>
+                    <p><strong>Applied</strong> ${new Date(loan.application_date).toLocaleDateString()}</p>
+                    ${loan.approval_date ? `<p><strong>Approved</strong> ${new Date(loan.approval_date).toLocaleDateString()}</p>` : ''}
+                    ${loan.disbursement_date ? `<p><strong>Disbursed</strong> ${new Date(loan.disbursement_date).toLocaleDateString()}</p>` : ''}
                 </div>
                 <div class="loan-card-actions">
                     ${status === 'approved' ? `
@@ -285,9 +239,6 @@ async function loadLoansByStatus(status, containerId, countId) {
                             <i class="fas fa-hand-holding-usd"></i> Disburse
                         </button>
                     ` : ''}
-                    <button class="btn-view" onclick="viewUserProfile('${loan.user_id}')">
-                        <i class="fas fa-user"></i> View Profile
-                    </button>
                 </div>
             </div>
         `).join('');
@@ -339,9 +290,6 @@ async function loadUsers() {
                         '<span class="status-badge status-pending"><i class="fas fa-clock"></i> KYC Pending</span>'
                     }
                     <small>Joined: ${new Date(user.created_at).toLocaleDateString()}</small>
-                    <button class="btn btn-secondary" onclick="viewUserProfile('${user.id}')">
-                        <i class="fas fa-eye"></i>
-                    </button>
                 </div>
             </div>
         `).join('');
@@ -424,9 +372,7 @@ async function verifyKYC(userId) {
     try {
         const { error } = await supabaseClient
             .from('users')
-            .update({ 
-                kyc_verified: true 
-            })
+            .update({ kyc_verified: true })
             .eq('id', userId);
         
         if (error) throw error;
@@ -434,8 +380,6 @@ async function verifyKYC(userId) {
         showToast('KYC verified successfully!', 'success');
         await loadKYCVerifications();
         await loadAdminStats();
-        
-        await logActivity(currentUser.id, 'kyc_verified', { userId });
         
     } catch (error) {
         console.error('Error verifying KYC:', error);
@@ -460,8 +404,6 @@ async function rejectKYC(userId) {
         
         showToast('KYC rejected', 'info');
         await loadKYCVerifications();
-        
-        await logActivity(currentUser.id, 'kyc_rejected', { userId, reason });
         
     } catch (error) {
         console.error('Error rejecting KYC:', error);
@@ -586,8 +528,6 @@ async function handleLoanAction(event) {
         switchTab(currentTab);
         await loadAdminStats();
         
-        await logActivity(currentUser.id, `loan_${action}ed`, { loanId });
-        
     } catch (error) {
         console.error('Error performing action:', error);
         showToast(`Error ${action}ing loan`, 'error');
@@ -597,14 +537,6 @@ async function handleLoanAction(event) {
     }
 }
 
-function viewUserProfile(userId) {
-    showToast('User profile view coming soon!', 'info');
-}
-
-function exportUsers() {
-    showToast('Export feature coming soon!', 'info');
-}
-
 // Close modal on outside click
 window.onclick = function(event) {
     const modal = document.getElementById('actionModal');
@@ -612,3 +544,11 @@ window.onclick = function(event) {
         closeActionModal();
     }
 };
+
+// Make functions globally accessible
+window.switchTab = switchTab;
+window.openActionModal = openActionModal;
+window.closeActionModal = closeActionModal;
+window.handleLoanAction = handleLoanAction;
+window.verifyKYC = verifyKYC;
+window.rejectKYC = rejectKYC;
