@@ -72,20 +72,22 @@
                     </div>
                 </div>
                 <div class="hero-image">
-                    <img src="assets/images/hero-illustration.svg" alt="Loan Illustration" onerror="this.style.display='none'">
-                    <div class="floating-stats">
-                        <div class="stat-card">
-                            <i class="fas fa-users"></i>
-                            <div>
-                                <h3>5,000+</h3>
-                                <p>Active Borrowers</p>
+                    <div class="hero-illustration">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <div class="floating-stats">
+                            <div class="stat-card">
+                                <i class="fas fa-users"></i>
+                                <div>
+                                    <h3>5,000+</h3>
+                                    <p>Active Borrowers</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="stat-card">
-                            <i class="fas fa-coins"></i>
-                            <div>
-                                <h3>KES 50M+</h3>
-                                <p>Disbursed</p>
+                            <div class="stat-card">
+                                <i class="fas fa-coins"></i>
+                                <div>
+                                    <h3>KES 50M+</h3>
+                                    <p>Disbursed</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -179,36 +181,36 @@
                     <h2 id="authModalTitle">Create Account</h2>
                     <p id="authModalSubtitle">Start your journey to financial freedom</p>
                 </div>
-                <form id="authForm" onsubmit="handleAuthSubmit(event)" enctype="multipart/form-data">
+                <form id="authForm" onsubmit="handleAuthSubmit(event)" enctype="multipart/form-data" novalidate>
                     <!-- Registration Fields -->
-                    <div id="registrationFields" style="display:none;">
+                    <div id="registrationFields">
                         <div class="form-row">
                             <div class="form-group">
-                                <label><i class="fas fa-user"></i> Full Name</label>
+                                <label><i class="fas fa-user"></i> Full Name *</label>
                                 <input type="text" id="fullName" placeholder="Enter your full name" required>
                             </div>
                             <div class="form-group">
-                                <label><i class="fas fa-id-card"></i> ID Number</label>
-                                <input type="text" id="idNumber" placeholder="e.g., 12345678" required>
+                                <label><i class="fas fa-id-card"></i> ID Number *</label>
+                                <input type="text" id="idNumber" placeholder="e.g., 12345678" required pattern="[0-9]{5,8}" title="Please enter a valid ID number (5-8 digits)">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label><i class="fas fa-envelope"></i> Email Address</label>
+                                <label><i class="fas fa-envelope"></i> Email Address *</label>
                                 <input type="email" id="email" placeholder="Enter your email" required>
                             </div>
                             <div class="form-group">
-                                <label><i class="fas fa-phone"></i> Phone Number</label>
-                                <input type="tel" id="phone" placeholder="e.g., 0712345678" required>
+                                <label><i class="fas fa-phone"></i> Phone Number *</label>
+                                <input type="tel" id="phone" placeholder="e.g., 0712345678" required pattern="[0-9]{10,12}" title="Please enter a valid phone number">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label><i class="fas fa-calendar"></i> Date of Birth</label>
-                                <input type="date" id="dateOfBirth" required>
+                                <label><i class="fas fa-calendar"></i> Date of Birth *</label>
+                                <input type="date" id="dateOfBirth" required max="2006-01-01">
                             </div>
                             <div class="form-group">
-                                <label><i class="fas fa-venus-mars"></i> Gender</label>
+                                <label><i class="fas fa-venus-mars"></i> Gender *</label>
                                 <select id="gender" required>
                                     <option value="">Select gender</option>
                                     <option value="male">Male</option>
@@ -224,17 +226,17 @@
                             </div>
                             <div class="form-group">
                                 <label><i class="fas fa-money-bill-wave"></i> Monthly Income (KES)</label>
-                                <input type="number" id="monthlyIncome" placeholder="e.g., 50000">
+                                <input type="number" id="monthlyIncome" placeholder="e.g., 50000" min="0" step="1000">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-lock"></i> Password</label>
-                            <input type="password" id="password" placeholder="Create a strong password" required>
+                            <label><i class="fas fa-lock"></i> Password *</label>
+                            <input type="password" id="password" placeholder="Create a strong password" required minlength="8">
                             <small>Minimum 8 characters with at least one number and special character</small>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-lock"></i> Confirm Password</label>
-                            <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+                            <label><i class="fas fa-lock"></i> Confirm Password *</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirm your password" required minlength="8">
                         </div>
                         
                         <!-- Document Uploads -->
@@ -250,9 +252,9 @@
                             <img id="profilePreview" class="image-preview" style="display:none;" alt="Profile preview">
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-id-card"></i> ID Document (ID/Passport)</label>
+                            <label><i class="fas fa-id-card"></i> ID Document (ID/Passport) *</label>
                             <div class="file-upload">
-                                <input type="file" id="idDocument" accept="image/*" onchange="previewImage(this, 'idPreview')">
+                                <input type="file" id="idDocument" accept="image/*" onchange="previewImage(this, 'idPreview')" required>
                                 <div class="file-upload-label">
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     <span>Click to upload ID document</span>
@@ -266,19 +268,19 @@
                         <div class="form-group terms">
                             <label>
                                 <input type="checkbox" id="termsAccepted" required>
-                                I agree to the <a href="#" onclick="showTerms()">Terms and Conditions</a> and <a href="#" onclick="showPrivacy()">Privacy Policy</a>
+                                I agree to the <a href="#" onclick="showTerms(); return false;">Terms and Conditions</a> and <a href="#" onclick="showPrivacy(); return false;">Privacy Policy</a>
                             </label>
                         </div>
                     </div>
 
                     <!-- Login Fields -->
-                    <div id="loginFields">
+                    <div id="loginFields" style="display:none;">
                         <div class="form-group">
-                            <label><i class="fas fa-envelope"></i> Email Address</label>
+                            <label><i class="fas fa-envelope"></i> Email Address *</label>
                             <input type="email" id="loginEmail" placeholder="Enter your email" required>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-lock"></i> Password</label>
+                            <label><i class="fas fa-lock"></i> Password *</label>
                             <input type="password" id="loginPassword" placeholder="Enter your password" required>
                         </div>
                     </div>
@@ -289,7 +291,7 @@
                     </button>
                 </form>
                 <p id="authSwitchText">
-                    Already have an account? <a href="#" onclick="switchAuthMode('login')">Sign In</a>
+                    Already have an account? <a href="#" onclick="switchAuthMode('login'); return false;">Sign In</a>
                 </p>
             </div>
         </div>
