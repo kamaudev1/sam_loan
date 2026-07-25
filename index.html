@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAM Loans - Smart & Affordable Loans</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="mainNav">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-hand-holding-usd"></i>
+                <h1>SAM Loans</h1>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a href="#home">Home</a>
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="dashboard.html" id="dashboardLink" style="display:none;">Dashboard</a>
+                <a href="admin.html" id="adminLink" style="display:none;">Admin</a>
+                <button id="authBtn" class="btn btn-primary" onclick="handleAuth()">
+                    <i class="fas fa-user"></i> Get Started
+                </button>
+            </div>
+            <div class="hamburger" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <i class="fas fa-shield-alt"></i> Trusted by 5,000+ Kenyans
+                    </div>
+                    <h1>Get <span class="highlight">Instant Loans</span> in Kenya Shillings</h1>
+                    <p>Access affordable soft loans with competitive rates. Fast approval, flexible repayment terms, and no hidden charges.</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary btn-large" onclick="showAuthModal('register')">
+                            <i class="fas fa-rocket"></i> Apply Now
+                        </button>
+                        <button class="btn btn-secondary btn-large" onclick="showAuthModal('login')">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                    </div>
+                    <div class="hero-features">
+                        <div class="hero-feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>No Collateral</span>
+                        </div>
+                        <div class="hero-feature">
+                            <i class="fas fa-clock"></i>
+                            <span>24hr Approval</span>
+                        </div>
+                        <div class="hero-feature">
+                            <i class="fas fa-percent"></i>
+                            <span>5% Interest</span>
+                        </div>
+                        <div class="hero-feature">
+                            <i class="fas fa-mobile-alt"></i>
+                            <span>100% Digital</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="assets/images/hero-illustration.svg" alt="Loan Illustration" onerror="this.style.display='none'">
+                    <div class="floating-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-users"></i>
+                            <div>
+                                <h3>5,000+</h3>
+                                <p>Active Borrowers</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-coins"></i>
+                            <div>
+                                <h3>KES 50M+</h3>
+                                <p>Disbursed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Why Choose <span class="highlight">SAM Loans</span></h2>
+                <p>We make borrowing simple, fast, and transparent</p>
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Lightning Fast</h3>
+                    <p>Get approved within 24 hours and receive funds directly to your M-Pesa or bank account</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Secure & Private</h3>
+                    <p>Your data is protected with bank-level encryption and strict privacy policies</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </div>
+                    <h3>Flexible Terms</h3>
+                    <p>Choose repayment periods from 3 to 24 months with competitive interest rates</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>100% Digital</h3>
+                    <p>Apply from anywhere using your phone or computer. No paperwork required</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2>How <span class="highlight">It Works</span></h2>
+                <p>Get your loan in 3 simple steps</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <i class="fas fa-user-plus"></i>
+                        <h3>Create Account</h3>
+                        <p>Register with your details and complete KYC verification</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <i class="fas fa-file-invoice"></i>
+                        <h3>Apply for Loan</h3>
+                        <p>Choose your amount and repayment period</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>Get Funded</h3>
+                        <p>Receive funds within 24 hours after approval</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Enhanced Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAuthModal()">&times;</span>
+            <div id="authFormContainer">
+                <div class="auth-header">
+                    <h2 id="authModalTitle">Create Account</h2>
+                    <p id="authModalSubtitle">Start your journey to financial freedom</p>
+                </div>
+                <form id="authForm" onsubmit="handleAuthSubmit(event)" enctype="multipart/form-data">
+                    <!-- Registration Fields -->
+                    <div id="registrationFields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-user"></i> Full Name</label>
+                                <input type="text" id="fullName" placeholder="Enter your full name" required>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-id-card"></i> ID Number</label>
+                                <input type="text" id="idNumber" placeholder="e.g., 12345678" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-envelope"></i> Email Address</label>
+                                <input type="email" id="email" placeholder="Enter your email" required>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-phone"></i> Phone Number</label>
+                                <input type="tel" id="phone" placeholder="e.g., 0712345678" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-calendar"></i> Date of Birth</label>
+                                <input type="date" id="dateOfBirth" required>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-venus-mars"></i> Gender</label>
+                                <select id="gender" required>
+                                    <option value="">Select gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-briefcase"></i> Occupation</label>
+                                <input type="text" id="occupation" placeholder="Your occupation">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-money-bill-wave"></i> Monthly Income (KES)</label>
+                                <input type="number" id="monthlyIncome" placeholder="e.g., 50000">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> Password</label>
+                            <input type="password" id="password" placeholder="Create a strong password" required>
+                            <small>Minimum 8 characters with at least one number and special character</small>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> Confirm Password</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+                        </div>
+                        
+                        <!-- Document Uploads -->
+                        <div class="form-group">
+                            <label><i class="fas fa-camera"></i> Profile Picture</label>
+                            <div class="file-upload">
+                                <input type="file" id="profilePicture" accept="image/*" onchange="previewImage(this, 'profilePreview')">
+                                <div class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Click to upload profile picture</span>
+                                </div>
+                            </div>
+                            <img id="profilePreview" class="image-preview" style="display:none;" alt="Profile preview">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-id-card"></i> ID Document (ID/Passport)</label>
+                            <div class="file-upload">
+                                <input type="file" id="idDocument" accept="image/*" onchange="previewImage(this, 'idPreview')">
+                                <div class="file-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Click to upload ID document</span>
+                                </div>
+                            </div>
+                            <img id="idPreview" class="image-preview" style="display:none;" alt="ID preview">
+                            <small>Upload a clear photo of your national ID or passport</small>
+                        </div>
+                        
+                        <!-- Terms -->
+                        <div class="form-group terms">
+                            <label>
+                                <input type="checkbox" id="termsAccepted" required>
+                                I agree to the <a href="#" onclick="showTerms()">Terms and Conditions</a> and <a href="#" onclick="showPrivacy()">Privacy Policy</a>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Login Fields -->
+                    <div id="loginFields">
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i> Email Address</label>
+                            <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-lock"></i> Password</label>
+                            <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn">
+                        <i class="fas fa-spinner fa-spin" style="display:none;"></i>
+                        <span id="authBtnText">Create Account</span>
+                    </button>
+                </form>
+                <p id="authSwitchText">
+                    Already have an account? <a href="#" onclick="switchAuthMode('login')">Sign In</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms Modal -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content terms-content">
+            <span class="close" onclick="closeTermsModal()">&times;</span>
+            <h2>Terms and Conditions</h2>
+            <div class="terms-text">
+                <h3>1. Loan Agreement</h3>
+                <p>By accepting these terms, you agree to repay the loan amount plus interest as per the agreed schedule.</p>
+                <h3>2. Interest Rates</h3>
+                <p>Interest rates are fixed at 5% per annum for all soft loans.</p>
+                <h3>3. Repayment</h3>
+                <p>Repayments must be made monthly via M-Pesa or bank transfer.</p>
+                <h3>4. Default</h3>
+                <p>Failure to repay may result in additional charges and legal action.</p>
+                <h3>5. Data Privacy</h3>
+                <p>Your data is protected and will only be used for loan processing purposes.</p>
+            </div>
+            <button class="btn btn-primary" onclick="closeTermsModal()">I Understand</button>
+        </div>
+    </div>
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
