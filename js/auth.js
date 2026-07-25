@@ -1,4 +1,4 @@
-// js/auth.js - Fixed Version
+// js/auth.js
 let authCurrentUser = null;
 let profilePictureFile = null;
 let idDocumentFile = null;
@@ -86,7 +86,6 @@ async function checkAuthState() {
         }
     } catch (error) {
         console.error('Auth check error:', error);
-        // Handle gracefully - show login button
         const authBtn = document.getElementById('authBtn');
         if (authBtn) {
             authBtn.innerHTML = '<i class="fas fa-user"></i> Get Started';
@@ -117,7 +116,6 @@ function showAuthModal(mode) {
         if (switchText) {
             switchText.innerHTML = 'Already have an account? <a href="#" onclick="switchAuthMode(\'login\'); return false;">Sign In</a>';
         }
-        // Reset form
         const form = document.getElementById('authForm');
         if (form) form.reset();
         const profilePreview = document.getElementById('profilePreview');
@@ -151,7 +149,6 @@ function switchAuthMode(mode) {
     showAuthModal(mode);
 }
 
-// Image preview
 function previewImage(input, previewId) {
     const preview = document.getElementById(previewId);
     if (input.files && input.files[0] && preview) {
@@ -392,7 +389,6 @@ async function handleLogout() {
     window.location.href = 'index.html';
 }
 
-// Toast notification system
 function showToast(message, type = 'info') {
     const container = document.querySelector('.toast-container') || createToastContainer();
     const toast = document.createElement('div');
@@ -414,7 +410,6 @@ function createToastContainer() {
     return container;
 }
 
-// Terms and Privacy modals
 function showTerms() {
     const modal = document.getElementById('termsModal');
     if (modal) modal.style.display = 'flex';
@@ -429,7 +424,6 @@ function closeTermsModal() {
     if (modal) modal.style.display = 'none';
 }
 
-// Mobile menu toggle
 function toggleMobileMenu() {
     const navLinks = document.getElementById('navLinks');
     if (navLinks) navLinks.classList.toggle('active');
