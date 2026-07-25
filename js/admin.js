@@ -552,3 +552,32 @@ window.closeActionModal = closeActionModal;
 window.handleLoanAction = handleLoanAction;
 window.verifyKYC = verifyKYC;
 window.rejectKYC = rejectKYC;
+
+// Add to admin.js - KYC Verification Functions
+
+async function verifyKYC(userId) {
+    if (!confirm('Are you sure you want to verify this user\'s KYC?')) return;
+    
+    try {
+        // Get the admin user
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
+        const { error } = await supabaseClient
+            .from('users')
+            .update({ 
+                kyc_verified: true,
+                kyc_verified_at: new Date().toISOString(),
+                kyc_verified_by: user.id,
+                kyc_rejection_reason: null
+            })
+            .eq('id', userId);
+        
+        if (error) throw error;
+        
+        // Log the verification
+        await supabaseClient
+            .from('kyc_logs')
+            .insert([{
+                user_id: userId,
+                action: 'verified',
+                details: { verified_by: user
