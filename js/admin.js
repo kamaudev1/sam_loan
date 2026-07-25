@@ -73,4 +73,18 @@ async function rejectKYC(userId) {
                     user_id: userId,
                     action: 'rejected',
                     details: { reason: reason, rejected_by: user.email },
-                    performed_by: user
+                    performed_by: user.id
+                }]);
+        } catch (e) {
+            console.warn('Could not log KYC action:', e);
+        }
+        
+        showToast('KYC rejected', 'info');
+        await loadKYCVerifications();
+        await loadAdminStats();
+        
+    } catch (error) {
+        console.error('Error rejecting KYC:', error);
+        showToast('Error rejecting KYC: ' + error.message, 'error');
+    }
+}
