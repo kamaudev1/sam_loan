@@ -1,8 +1,8 @@
-// js/auth.js
-let currentAuthMode = 'register';
-let currentUser = null;
+// js/auth.js - Fixed Version
+let authCurrentUser = null;
 let profilePictureFile = null;
 let idDocumentFile = null;
+let currentAuthMode = 'register';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,10 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupNavbarScroll() {
     window.addEventListener('scroll', () => {
         const navbar = document.getElementById('mainNav');
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
+        if (navbar) {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
         }
     });
 }
@@ -40,32 +42,56 @@ function setupPasswordValidation() {
 }
 
 async function checkAuthState() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const authBtn = document.getElementById('authBtn');
-    const dashboardLink = document.getElementById('dashboardLink');
-    const adminLink = document.getElementById('adminLink');
-    
-    if (user) {
-        currentUser = user;
-        authBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-        authBtn.onclick = handleLogout;
-        dashboardLink.style.display = 'inline';
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const authBtn = document.getElementById('authBtn');
+        const dashboardLink = document.getElementById('dashboardLink');
+        const adminLink = document.getElementById('adminLink');
         
-        // Check if user is admin
-        const { data: userData } = await supabaseClient
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single();
+        if (user) {
+            authCurrentUser = user;
+            if (authBtn) {
+                authBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+                authBtn.onclick = handleLogout;
+            }
+            if (dashboardLink) {
+                dashboardLink.style.display = 'inline';
+            }
             
-        if (userData?.role === 'admin') {
-            adminLink.style.display = 'inline';
+            // Check if user is admin
+            try {
+                const { data: userData } = await supabaseClient
+                    .from('users')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+                    
+                if (userData?.role === 'admin' && adminLink) {
+                    adminLink.style.display = 'inline';
+                }
+            } catch (e) {
+                console.warn('Could not check admin status:', e);
+            }
+        } else {
+            if (authBtn) {
+                authBtn.innerHTML = '<i class="fas fa-user"></i> Get Started';
+                authBtn.onclick = () => showAuthModal('register');
+            }
+            if (dashboardLink) {
+                dashboardLink.style.display = 'none';
+            }
+            if (adminLink) {
+                adminLink.style.display = 'none';
+            }
         }
-    } else {
-        authBtn.innerHTML = '<i class="fas fa-user"></i> Get Started';
-        authBtn.onclick = () => showAuthModal('register');
-        dashboardLink.style.display = 'none';
-        adminLink.style.display = 'none';
+    } catch (error) {
+        console.error('Auth check error:', error);
+        // Handle gracefully - show login button
+        const authBtn = document.getElementById('authBtn');
+        if (authBtn) {
+            authBtn.innerHTML = '<i class="fas fa-user"></i> Get Started';
+            authBtn.onclick = () => showAuthModal('register');
+        }
     }
 }
 
@@ -80,33 +106,45 @@ function showAuthModal(mode) {
     const loginFields = document.getElementById('loginFields');
     const switchText = document.getElementById('authSwitchText');
     
+    if (!modal) return;
+    
     if (mode === 'register') {
-        title.textContent = 'Create Account';
-        subtitle.textContent = 'Start your journey to financial freedom';
-        btnText.textContent = 'Create Account';
-        registrationFields.style.display = 'block';
-        loginFields.style.display = 'none';
-        switchText.innerHTML = 'Already have an account? <a href="#" onclick="switchAuthMode(\'login\')">Sign In</a>';
+        if (title) title.textContent = 'Create Account';
+        if (subtitle) subtitle.textContent = 'Start your journey to financial freedom';
+        if (btnText) btnText.textContent = 'Create Account';
+        if (registrationFields) registrationFields.style.display = 'block';
+        if (loginFields) loginFields.style.display = 'none';
+        if (switchText) {
+            switchText.innerHTML = 'Already have an account? <a href="#" onclick="switchAuthMode(\'login\'); return false;">Sign In</a>';
+        }
         // Reset form
-        document.getElementById('authForm').reset();
-        document.getElementById('profilePreview').style.display = 'none';
-        document.getElementById('idPreview').style.display = 'none';
+        const form = document.getElementById('authForm');
+        if (form) form.reset();
+        const profilePreview = document.getElementById('profilePreview');
+        const idPreview = document.getElementById('idPreview');
+        if (profilePreview) profilePreview.style.display = 'none';
+        if (idPreview) idPreview.style.display = 'none';
     } else {
-        title.textContent = 'Welcome Back';
-        subtitle.textContent = 'Sign in to access your account';
-        btnText.textContent = 'Sign In';
-        registrationFields.style.display = 'none';
-        loginFields.style.display = 'block';
-        switchText.innerHTML = 'Don\'t have an account? <a href="#" onclick="switchAuthMode(\'register\')">Create Account</a>';
-        document.getElementById('loginEmail').value = '';
-        document.getElementById('loginPassword').value = '';
+        if (title) title.textContent = 'Welcome Back';
+        if (subtitle) subtitle.textContent = 'Sign in to access your account';
+        if (btnText) btnText.textContent = 'Sign In';
+        if (registrationFields) registrationFields.style.display = 'none';
+        if (loginFields) loginFields.style.display = 'block';
+        if (switchText) {
+            switchText.innerHTML = 'Don\'t have an account? <a href="#" onclick="switchAuthMode(\'register\'); return false;">Create Account</a>';
+        }
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPassword = document.getElementById('loginPassword');
+        if (loginEmail) loginEmail.value = '';
+        if (loginPassword) loginPassword.value = '';
     }
     
     modal.style.display = 'flex';
 }
 
 function closeAuthModal() {
-    document.getElementById('authModal').style.display = 'none';
+    const modal = document.getElementById('authModal');
+    if (modal) modal.style.display = 'none';
 }
 
 function switchAuthMode(mode) {
@@ -116,7 +154,7 @@ function switchAuthMode(mode) {
 // Image preview
 function previewImage(input, previewId) {
     const preview = document.getElementById(previewId);
-    if (input.files && input.files[0]) {
+    if (input.files && input.files[0] && preview) {
         const reader = new FileReader();
         reader.onload = function(e) {
             preview.src = e.target.result;
@@ -136,11 +174,13 @@ async function handleAuthSubmit(event) {
     event.preventDefault();
     const submitBtn = document.getElementById('authSubmitBtn');
     const btnText = document.getElementById('authBtnText');
-    const spinner = submitBtn.querySelector('.fa-spinner');
+    const spinner = submitBtn?.querySelector('.fa-spinner');
+    
+    if (!submitBtn) return;
     
     submitBtn.disabled = true;
-    spinner.style.display = 'inline-block';
-    btnText.textContent = 'Processing...';
+    if (spinner) spinner.style.display = 'inline-block';
+    if (btnText) btnText.textContent = 'Processing...';
     
     try {
         if (currentAuthMode === 'register') {
@@ -152,25 +192,30 @@ async function handleAuthSubmit(event) {
         showToast(error.message, 'error');
     } finally {
         submitBtn.disabled = false;
-        spinner.style.display = 'none';
-        btnText.textContent = currentAuthMode === 'register' ? 'Create Account' : 'Sign In';
+        if (spinner) spinner.style.display = 'none';
+        if (btnText) btnText.textContent = currentAuthMode === 'register' ? 'Create Account' : 'Sign In';
     }
 }
 
 async function handleRegistration() {
-    const fullName = document.getElementById('fullName').value.trim();
-    const idNumber = document.getElementById('idNumber').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const dateOfBirth = document.getElementById('dateOfBirth').value;
-    const gender = document.getElementById('gender').value;
-    const occupation = document.getElementById('occupation').value.trim();
-    const monthlyIncome = document.getElementById('monthlyIncome').value;
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    const termsAccepted = document.getElementById('termsAccepted').checked;
+    const fullName = document.getElementById('fullName')?.value?.trim();
+    const idNumber = document.getElementById('idNumber')?.value?.trim();
+    const email = document.getElementById('email')?.value?.trim();
+    const phone = document.getElementById('phone')?.value?.trim();
+    const dateOfBirth = document.getElementById('dateOfBirth')?.value;
+    const gender = document.getElementById('gender')?.value;
+    const occupation = document.getElementById('occupation')?.value?.trim();
+    const monthlyIncome = document.getElementById('monthlyIncome')?.value;
+    const password = document.getElementById('password')?.value;
+    const confirmPassword = document.getElementById('confirmPassword')?.value;
+    const termsAccepted = document.getElementById('termsAccepted')?.checked;
+    const idDocument = document.getElementById('idDocument');
     
     // Validation
+    if (!fullName || !idNumber || !email || !phone || !dateOfBirth || !gender || !password || !confirmPassword) {
+        throw new Error('Please fill in all required fields');
+    }
+    
     if (password !== confirmPassword) {
         throw new Error('Passwords do not match');
     }
@@ -185,6 +230,10 @@ async function handleRegistration() {
     
     if (!idNumber || idNumber.length < 5) {
         throw new Error('Please enter a valid ID number');
+    }
+    
+    if (!idDocument || !idDocument.files || !idDocument.files[0]) {
+        throw new Error('Please upload your ID document');
     }
     
     // Register user with Supabase Auth
@@ -209,65 +258,95 @@ async function handleRegistration() {
         let idUrl = null;
         
         if (profilePictureFile) {
-            const fileExt = profilePictureFile.name.split('.').pop();
-            const fileName = `${data.user.id}/profile.${fileExt}`;
-            const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                .from('profiles')
-                .upload(fileName, profilePictureFile);
-            
-            if (!uploadError) {
-                const { data: { publicUrl } } = supabaseClient.storage
+            try {
+                const fileExt = profilePictureFile.name.split('.').pop();
+                const fileName = `${data.user.id}/profile.${fileExt}`;
+                const { error: uploadError } = await supabaseClient.storage
                     .from('profiles')
-                    .getPublicUrl(fileName);
-                profileUrl = publicUrl;
+                    .upload(fileName, profilePictureFile);
+                
+                if (!uploadError) {
+                    const { data: { publicUrl } } = supabaseClient.storage
+                        .from('profiles')
+                        .getPublicUrl(fileName);
+                    profileUrl = publicUrl;
+                } else {
+                    console.warn('Profile upload failed:', uploadError);
+                }
+            } catch (e) {
+                console.warn('Profile upload error:', e);
             }
         }
         
-        if (idDocumentFile) {
-            const fileExt = idDocumentFile.name.split('.').pop();
-            const fileName = `${data.user.id}/id.${fileExt}`;
-            const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                .from('kyc')
-                .upload(fileName, idDocumentFile);
-            
-            if (!uploadError) {
-                const { data: { publicUrl } } = supabaseClient.storage
+        if (idDocument && idDocument.files && idDocument.files[0]) {
+            try {
+                const fileExt = idDocument.files[0].name.split('.').pop();
+                const fileName = `${data.user.id}/id.${fileExt}`;
+                const { error: uploadError } = await supabaseClient.storage
                     .from('kyc')
-                    .getPublicUrl(fileName);
-                idUrl = publicUrl;
+                    .upload(fileName, idDocument.files[0]);
+                
+                if (!uploadError) {
+                    const { data: { publicUrl } } = supabaseClient.storage
+                        .from('kyc')
+                        .getPublicUrl(fileName);
+                    idUrl = publicUrl;
+                } else {
+                    console.warn('ID upload failed:', uploadError);
+                }
+            } catch (e) {
+                console.warn('ID upload error:', e);
             }
+        }
+        
+        // Prepare user data
+        const userData = {
+            id: data.user.id,
+            email: email,
+            full_name: fullName,
+            id_number: idNumber,
+            phone: phone,
+            gender: gender,
+            occupation: occupation || null,
+            monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null,
+            profile_picture_url: profileUrl,
+            id_picture_url: idUrl,
+            terms_accepted: true,
+            terms_accepted_date: new Date().toISOString(),
+            role: 'user'
+        };
+        
+        // Only add date_of_birth if it has a value
+        if (dateOfBirth && dateOfBirth.trim() !== '') {
+            userData.date_of_birth = dateOfBirth;
         }
         
         // Save user details to users table
         const { error: userError } = await supabaseClient
             .from('users')
-            .insert([{
-                id: data.user.id,
-                email: email,
-                full_name: fullName,
-                id_number: idNumber,
-                phone: phone,
-                date_of_birth: dateOfBirth,
-                gender: gender,
-                occupation: occupation,
-                monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null,
-                profile_picture_url: profileUrl,
-                id_picture_url: idUrl,
-                terms_accepted: true,
-                terms_accepted_date: new Date().toISOString(),
-                role: 'user'
-            }]);
+            .insert([userData]);
         
         if (userError) {
             console.error('Error saving user:', userError);
-            throw new Error('Error saving user data. Please try again.');
+            
+            // If it's a date error, try without date_of_birth
+            if (userError.message && userError.message.includes('date')) {
+                delete userData.date_of_birth;
+                const { error: retryError } = await supabaseClient
+                    .from('users')
+                    .insert([userData]);
+                
+                if (retryError) {
+                    console.error('Retry error:', retryError);
+                    throw new Error('Error saving user data. Please try again.');
+                }
+            } else {
+                throw new Error('Error saving user data. Please try again.');
+            }
         }
         
         showToast('Registration successful! Please verify your email.', 'success');
         closeAuthModal();
-        
-        // Log activity
-        await logActivity(data.user.id, 'registration', { email, fullName });
         
         // Redirect to dashboard
         setTimeout(() => {
@@ -277,8 +356,8 @@ async function handleRegistration() {
 }
 
 async function handleLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const email = document.getElementById('loginEmail')?.value?.trim();
+    const password = document.getElementById('loginPassword')?.value;
     
     if (!email || !password) {
         throw new Error('Please enter both email and password');
@@ -295,9 +374,6 @@ async function handleLogin() {
         showToast('Login successful!', 'success');
         closeAuthModal();
         
-        // Log activity
-        await logActivity(data.user.id, 'login');
-        
         // Redirect to dashboard
         setTimeout(() => {
             window.location.href = 'dashboard.html';
@@ -312,25 +388,8 @@ async function handleLogout() {
         return;
     }
     showToast('Logged out successfully', 'info');
-    currentUser = null;
-    checkAuthState();
+    authCurrentUser = null;
     window.location.href = 'index.html';
-}
-
-// Activity logging
-async function logActivity(userId, action, details = {}) {
-    try {
-        await supabaseClient
-            .from('activity_logs')
-            .insert([{
-                user_id: userId,
-                action: action,
-                details: details,
-                user_agent: navigator.userAgent
-            }]);
-    } catch (error) {
-        console.error('Error logging activity:', error);
-    }
 }
 
 // Toast notification system
@@ -357,22 +416,23 @@ function createToastContainer() {
 
 // Terms and Privacy modals
 function showTerms() {
-    document.getElementById('termsModal').style.display = 'flex';
+    const modal = document.getElementById('termsModal');
+    if (modal) modal.style.display = 'flex';
 }
 
 function showPrivacy() {
-    // Implement privacy modal
     showToast('Privacy policy coming soon!', 'info');
 }
 
 function closeTermsModal() {
-    document.getElementById('termsModal').style.display = 'none';
+    const modal = document.getElementById('termsModal');
+    if (modal) modal.style.display = 'none';
 }
 
 // Mobile menu toggle
 function toggleMobileMenu() {
     const navLinks = document.getElementById('navLinks');
-    navLinks.classList.toggle('active');
+    if (navLinks) navLinks.classList.toggle('active');
 }
 
 // Close modals when clicking outside
@@ -386,3 +446,16 @@ window.onclick = function(event) {
         closeTermsModal();
     }
 };
+
+// Make functions globally accessible
+window.showAuthModal = showAuthModal;
+window.closeAuthModal = closeAuthModal;
+window.switchAuthMode = switchAuthMode;
+window.handleAuthSubmit = handleAuthSubmit;
+window.handleAuth = () => showAuthModal('register');
+window.handleLogout = handleLogout;
+window.previewImage = previewImage;
+window.showTerms = showTerms;
+window.showPrivacy = showPrivacy;
+window.closeTermsModal = closeTermsModal;
+window.toggleMobileMenu = toggleMobileMenu;
