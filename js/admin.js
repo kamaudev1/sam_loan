@@ -580,4 +580,61 @@ async function verifyKYC(userId) {
             .insert([{
                 user_id: userId,
                 action: 'verified',
-                details: { verified_by: user
+                details: { verified_by: user.email },
+                performed_by: user.id
+            }]);
+        
+        showToast('KYC verified successfully!', 'success');
+        await loadKYCVerifications();
+        await loadAdminStats();
+        
+    } catch (error) {
+        console.error('Error verifying KYC:', error);
+        showToast('Error verifying KYC', 'error');
+    }
+}
+
+async function rejectKYC(userId) {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (reason === null) return;
+    
+    if (!reason.trim()) {
+        showToast('Please provide a reason for rejection', 'error');
+        return;
+    }
+    
+    try {
+        // Get the admin user
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
+        const { error } = await supabaseClient
+            .from('users')
+            .update({ 
+                kyc_verified: false,
+                kyc_rejection_reason: reason,
+                kyc_verified_by: user.id,
+                kyc_verified_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+        
+        if (error) throw error;
+        
+        // Log the rejection
+        await supabaseClient
+            .from('kyc_logs')
+            .insert([{
+                user_id: userId,
+                action: 'rejected',
+                details: { reason: reason, rejected_by: user.email },
+                performed_by: user.id
+            }]);
+        
+        showToast('KYC rejected', 'info');
+        await loadKYCVerifications();
+        await loadAdminStats();
+        
+    } catch (error) {
+        console.error('Error rejecting KYC:', error);
+        showToast('Error rejecting KYC', 'error');
+    }
+}
