@@ -1,5 +1,5 @@
-// js/dashboard.js
-let currentUser = null;
+// js/dashboard.js - Fixed Version
+let dashboardUser = null;
 let userData = null;
 let allLoans = [];
 
@@ -12,22 +12,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function checkUserAuth() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-        window.location.href = 'index.html';
-        return;
-    }
-    currentUser = user;
-    
-    // Check if admin
-    const { data: userData } = await supabaseClient
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            window.location.href = 'index.html';
+            return;
+        }
+        dashboardUser = user;
         
-    if (userData?.role === 'admin') {
-        document.getElementById('adminLink').style.display = 'inline';
+        // Check if admin
+        try {
+            const { data: userData } = await supabaseClient
+                .from('users')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+                
+            const adminLink = document.getElementById('adminLink');
+            if (userData?.role === 'admin' && adminLink) {
+                adminLink.style.display = 'inline';
+            }
+        } catch (e) {
+            console.warn('Could not check admin status:', e);
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = 'index.html';
     }
 }
 
@@ -36,7 +46,7 @@ async function loadUserProfile() {
         const { data, error } = await supabaseClient
             .from('users')
             .select('*')
-            .eq('id', currentUser.id)
+            .eq('id', dashboardUser.id)
             .single();
         
         if (error) throw error;
@@ -44,25 +54,35 @@ async function loadUserProfile() {
         userData = data;
         
         // Update profile UI
-        document.getElementById('userName').textContent = `Welcome, ${data.full_name}!`;
-        document.getElementById('userEmail').textContent = data.email;
-        document.getElementById('userPhone').textContent = data.phone || 'Not provided';
-        document.getElementById('userIdNumber').textContent = data.id_number || 'Not provided';
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const userPhone = document.getElementById('userPhone');
+        const userIdNumber = document.getElementById('userIdNumber');
+        const profileAvatar = document.getElementById('profileAvatar');
+        const kycStatus = document.getElementById('kycStatus');
         
-        if (data.profile_picture_url) {
-            document.getElementById('profileAvatar').src = data.profile_picture_url;
-        } else {
-            document.getElementById('profileAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.full_name)}&background=1a237e&color=fff&size=100`;
+        if (userName) userName.textContent = `Welcome, ${data.full_name}!`;
+        if (userEmail) userEmail.textContent = data.email;
+        if (userPhone) userPhone.textContent = data.phone || 'Not provided';
+        if (userIdNumber) userIdNumber.textContent = data.id_number || 'Not provided';
+        
+        if (profileAvatar) {
+            if (data.profile_picture_url) {
+                profileAvatar.src = data.profile_picture_url;
+            } else {
+                profileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.full_name)}&background=1a237e&color=fff&size=100`;
+            }
         }
         
         // Update KYC status
-        const kycStatus = document.getElementById('kycStatus');
-        if (data.kyc_verified) {
-            kycStatus.className = 'profile-status verified';
-            kycStatus.innerHTML = '<i class="fas fa-check-circle"></i> KYC Verified';
-        } else {
-            kycStatus.className = 'profile-status';
-            kycStatus.innerHTML = '<i class="fas fa-clock"></i> KYC Pending';
+        if (kycStatus) {
+            if (data.kyc_verified) {
+                kycStatus.className = 'profile-status verified';
+                kycStatus.innerHTML = '<i class="fas fa-check-circle"></i> KYC Verified';
+            } else {
+                kycStatus.className = 'profile-status';
+                kycStatus.innerHTML = '<i class="fas fa-clock"></i> KYC Pending';
+            }
         }
         
     } catch (error) {
@@ -76,7 +96,7 @@ async function loadDashboardStats() {
         const { data: loans, error } = await supabaseClient
             .from('loans')
             .select('*')
-            .eq('user_id', currentUser.id);
+            .eq('user_id', dashboardUser.id);
         
         if (error) throw error;
         
@@ -87,10 +107,15 @@ async function loadDashboardStats() {
         const totalBorrowed = allLoans.filter(l => l.status === 'disbursed' || l.status === 'repaying').reduce((sum, l) => sum + l.amount, 0);
         const outstanding = allLoans.filter(l => l.status === 'disbursed' || l.status === 'repaying' || l.status === 'approved').reduce((sum, l) => sum + l.amount, 0);
         
-        document.getElementById('totalBorrowed').textContent = `KES ${totalBorrowed.toLocaleString()}`;
-        document.getElementById('activeLoans').textContent = activeLoans.length;
-        document.getElementById('pendingLoans').textContent = pendingLoans.length;
-        document.getElementById('outstandingBalance').textContent = `KES ${outstanding.toLocaleString()}`;
+        const totalBorrowedEl = document.getElementById('totalBorrowed');
+        const activeLoansEl = document.getElementById('activeLoans');
+        const pendingLoansEl = document.getElementById('pendingLoans');
+        const outstandingEl = document.getElementById('outstandingBalance');
+        
+        if (totalBorrowedEl) totalBorrowedEl.textContent = `KES ${totalBorrowed.toLocaleString()}`;
+        if (activeLoansEl) activeLoansEl.textContent = activeLoans.length;
+        if (pendingLoansEl) pendingLoansEl.textContent = pendingLoans.length;
+        if (outstandingEl) outstandingEl.textContent = `KES ${outstanding.toLocaleString()}`;
         
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -137,7 +162,7 @@ async function submitLoanApplication(event) {
         const { data, error } = await supabaseClient
             .from('loans')
             .insert([{
-                user_id: currentUser.id,
+                user_id: dashboardUser.id,
                 amount: amount,
                 purpose: purpose,
                 tenure: tenure,
@@ -152,13 +177,11 @@ async function submitLoanApplication(event) {
         
         showToast('Loan application submitted successfully!', 'success');
         event.target.reset();
-        document.getElementById('loanSummary').style.display = 'none';
+        const loanSummary = document.getElementById('loanSummary');
+        if (loanSummary) loanSummary.style.display = 'none';
         
         await loadDashboardStats();
         await loadLoanHistory();
-        
-        // Log activity
-        await logActivity(currentUser.id, 'loan_application', { amount, tenure, purpose });
         
     } catch (error) {
         console.error('Error submitting loan:', error);
@@ -174,12 +197,14 @@ async function loadLoanHistory() {
         const { data: loans, error } = await supabaseClient
             .from('loans')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', dashboardUser.id)
             .order('application_date', { ascending: false });
         
         if (error) throw error;
         
         const container = document.getElementById('loanList');
+        
+        if (!container) return;
         
         if (!loans || loans.length === 0) {
             container.innerHTML = `
@@ -271,8 +296,6 @@ async function acceptLoan(loanId) {
         await loadDashboardStats();
         await loadLoanHistory();
         
-        await logActivity(currentUser.id, 'loan_accepted', { loanId });
-        
     } catch (error) {
         console.error('Error accepting loan:', error);
         showToast('Error accepting loan', 'error');
@@ -307,38 +330,55 @@ function calculateLoanSummary() {
         const totalRepayment = amount + totalInterest;
         const monthlyPayment = totalRepayment / tenure;
         
-        document.getElementById('summaryPrincipal').textContent = `KES ${amount.toLocaleString()}`;
-        document.getElementById('summaryInterest').textContent = `KES ${totalInterest.toFixed(2).toLocaleString()}`;
-        document.getElementById('summaryTotal').textContent = `KES ${totalRepayment.toFixed(2).toLocaleString()}`;
-        document.getElementById('summaryMonthly').textContent = `KES ${monthlyPayment.toFixed(2).toLocaleString()}`;
+        const summaryPrincipal = document.getElementById('summaryPrincipal');
+        const summaryInterest = document.getElementById('summaryInterest');
+        const summaryTotal = document.getElementById('summaryTotal');
+        const summaryMonthly = document.getElementById('summaryMonthly');
         
-        summaryDiv.style.display = 'block';
+        if (summaryPrincipal) summaryPrincipal.textContent = `KES ${amount.toLocaleString()}`;
+        if (summaryInterest) summaryInterest.textContent = `KES ${totalInterest.toFixed(2).toLocaleString()}`;
+        if (summaryTotal) summaryTotal.textContent = `KES ${totalRepayment.toFixed(2).toLocaleString()}`;
+        if (summaryMonthly) summaryMonthly.textContent = `KES ${monthlyPayment.toFixed(2).toLocaleString()}`;
+        
+        if (summaryDiv) summaryDiv.style.display = 'block';
     } else {
-        summaryDiv.style.display = 'none';
+        if (summaryDiv) summaryDiv.style.display = 'none';
     }
 }
 
 // Edit Profile
 function editProfile() {
     const modal = document.getElementById('editProfileModal');
-    document.getElementById('editFullName').value = userData.full_name || '';
-    document.getElementById('editPhone').value = userData.phone || '';
-    document.getElementById('editOccupation').value = userData.occupation || '';
-    document.getElementById('editMonthlyIncome').value = userData.monthly_income || '';
-    modal.style.display = 'flex';
+    const editFullName = document.getElementById('editFullName');
+    const editPhone = document.getElementById('editPhone');
+    const editOccupation = document.getElementById('editOccupation');
+    const editMonthlyIncome = document.getElementById('editMonthlyIncome');
+    
+    if (editFullName) editFullName.value = userData.full_name || '';
+    if (editPhone) editPhone.value = userData.phone || '';
+    if (editOccupation) editOccupation.value = userData.occupation || '';
+    if (editMonthlyIncome) editMonthlyIncome.value = userData.monthly_income || '';
+    
+    if (modal) modal.style.display = 'flex';
 }
 
 function closeEditProfile() {
-    document.getElementById('editProfileModal').style.display = 'none';
+    const modal = document.getElementById('editProfileModal');
+    if (modal) modal.style.display = 'none';
 }
 
 async function updateProfile(event) {
     event.preventDefault();
     
-    const fullName = document.getElementById('editFullName').value.trim();
-    const phone = document.getElementById('editPhone').value.trim();
-    const occupation = document.getElementById('editOccupation').value.trim();
-    const monthlyIncome = document.getElementById('editMonthlyIncome').value;
+    const fullName = document.getElementById('editFullName')?.value?.trim();
+    const phone = document.getElementById('editPhone')?.value?.trim();
+    const occupation = document.getElementById('editOccupation')?.value?.trim();
+    const monthlyIncome = document.getElementById('editMonthlyIncome')?.value;
+    
+    if (!fullName || !phone) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
     
     try {
         const { error } = await supabaseClient
@@ -346,18 +386,16 @@ async function updateProfile(event) {
             .update({
                 full_name: fullName,
                 phone: phone,
-                occupation: occupation,
+                occupation: occupation || null,
                 monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null
             })
-            .eq('id', currentUser.id);
+            .eq('id', dashboardUser.id);
         
         if (error) throw error;
         
         showToast('Profile updated successfully!', 'success');
         closeEditProfile();
         await loadUserProfile();
-        
-        await logActivity(currentUser.id, 'profile_update', { fullName, phone });
         
     } catch (error) {
         console.error('Error updating profile:', error);
@@ -378,3 +416,12 @@ window.onclick = function(event) {
         closeEditProfile();
     }
 };
+
+// Make functions globally accessible
+window.submitLoanApplication = submitLoanApplication;
+window.acceptLoan = acceptLoan;
+window.makePayment = makePayment;
+window.editProfile = editProfile;
+window.closeEditProfile = closeEditProfile;
+window.updateProfile = updateProfile;
+window.refreshLoans = refreshLoans;
