@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - SAM Loans</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <nav class="navbar" id="mainNav">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-hand-holding-usd"></i>
+                <h1>SAM Loans Admin</h1>
+            </div>
+            <div class="nav-links">
+                <a href="index.html"><i class="fas fa-home"></i> Home</a>
+                <a href="dashboard.html"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                <a href="admin.html"><i class="fas fa-cog"></i> Admin</a>
+                <button class="btn btn-secondary" onclick="handleLogout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="admin-dashboard">
+        <div class="container">
+            <div class="admin-header">
+                <h1><i class="fas fa-cog"></i> Admin Panel</h1>
+                <div class="admin-stats" id="adminStats">
+                    <div class="stat-card">
+                        <i class="fas fa-clock" style="color: #e65100;"></i>
+                        <div>
+                            <h3 id="pendingCount">0</h3>
+                            <p>Pending Applications</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-users" style="color: #0d47a1;"></i>
+                        <div>
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-coins" style="color: #2e7d32;"></i>
+                        <div>
+                            <h3 id="totalDisbursed">KES 0</h3>
+                            <p>Total Disbursed</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-check-circle" style="color: #1a237e;"></i>
+                        <div>
+                            <h3 id="kycVerified">0</h3>
+                            <p>KYC Verified Users</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="pending" onclick="switchTab('pending')">
+                    <i class="fas fa-clock"></i> Pending
+                </button>
+                <button class="tab-btn" data-tab="approved" onclick="switchTab('approved')">
+                    <i class="fas fa-check-circle"></i> Approved
+                </button>
+                <button class="tab-btn" data-tab="disbursed" onclick="switchTab('disbursed')">
+                    <i class="fas fa-hand-holding-usd"></i> Disbursed
+                </button>
+                <button class="tab-btn" data-tab="rejected" onclick="switchTab('rejected')">
+                    <i class="fas fa-times-circle"></i> Rejected
+                </button>
+                <button class="tab-btn" data-tab="users" onclick="switchTab('users')">
+                    <i class="fas fa-users"></i> Users
+                </button>
+                <button class="tab-btn" data-tab="kyc" onclick="switchTab('kyc')">
+                    <i class="fas fa-id-card"></i> KYC
+                </button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="pending" class="tab-content active">
+                <div class="tab-header">
+                    <h2>Pending Loan Applications</h2>
+                    <span id="pendingCountDisplay">0 applications</span>
+                </div>
+                <div id="pendingLoansList"></div>
+            </div>
+
+            <div id="approved" class="tab-content">
+                <div class="tab-header">
+                    <h2>Approved Loans</h2>
+                    <span id="approvedCountDisplay">0 applications</span>
+                </div>
+                <div id="approvedLoansList"></div>
+            </div>
+
+            <div id="disbursed" class="tab-content">
+                <div class="tab-header">
+                    <h2>Disbursed Loans</h2>
+                    <span id="disbursedCountDisplay">0 applications</span>
+                </div>
+                <div id="disbursedLoansList"></div>
+            </div>
+
+            <div id="rejected" class="tab-content">
+                <div class="tab-header">
+                    <h2>Rejected Loans</h2>
+                    <span id="rejectedCountDisplay">0 applications</span>
+                </div>
+                <div id="rejectedLoansList"></div>
+            </div>
+
+            <div id="users" class="tab-content">
+                <div class="tab-header">
+                    <h2>User Management</h2>
+                    <div class="tab-actions">
+                        <button class="btn btn-secondary" onclick="exportUsers()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div id="usersList"></div>
+            </div>
+
+            <div id="kyc" class="tab-content">
+                <div class="tab-header">
+                    <h2>KYC Verification</h2>
+                    <span id="kycCountDisplay">0 pending</span>
+                </div>
+                <div id="kycList"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Action Modal -->
+    <div id="actionModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeActionModal()">&times;</span>
+            <h2 id="actionModalTitle">Loan Action</h2>
+            <form id="actionForm" onsubmit="handleLoanAction(event)">
+                <input type="hidden" id="actionLoanId">
+                <input type="hidden" id="actionType">
+                <div id="actionFields"></div>
+                <button type="submit" class="btn btn-primary btn-full" id="actionSubmitBtn">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
