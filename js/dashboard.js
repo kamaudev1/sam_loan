@@ -1,4 +1,4 @@
-// js/dashboard.js - Fixed Version
+// js/dashboard.js
 let dashboardUser = null;
 let userData = null;
 let allLoans = [];
@@ -74,7 +74,6 @@ async function loadUserProfile() {
             }
         }
         
-        // Update KYC status
         if (kycStatus) {
             if (data.kyc_verified) {
                 kycStatus.className = 'profile-status verified';
@@ -131,7 +130,6 @@ async function submitLoanApplication(event) {
     const purpose = document.getElementById('loanPurpose').value;
     const description = document.getElementById('loanDescription').value;
     
-    // Validation
     if (amount < 10000) {
         showToast('Minimum loan amount is KES 10,000', 'error');
         return;
@@ -147,7 +145,6 @@ async function submitLoanApplication(event) {
         return;
     }
     
-    // Check if user has KYC verified
     if (!userData.kyc_verified) {
         showToast('Please complete KYC verification before applying', 'warning');
         return;
@@ -203,7 +200,6 @@ async function loadLoanHistory() {
         if (error) throw error;
         
         const container = document.getElementById('loanList');
-        
         if (!container) return;
         
         if (!loans || loans.length === 0) {
@@ -224,36 +220,12 @@ async function loadLoanHistory() {
                     <span class="status-badge status-${loan.status}">${loan.status.toUpperCase()}</span>
                 </div>
                 <div class="loan-details">
-                    <p>
-                        <strong>Purpose</strong>
-                        ${loan.purpose}
-                    </p>
-                    <p>
-                        <strong>Tenure</strong>
-                        ${loan.tenure} months
-                    </p>
-                    <p>
-                        <strong>Applied</strong>
-                        ${new Date(loan.application_date).toLocaleDateString()}
-                    </p>
-                    ${loan.interest_rate ? `
-                        <p>
-                            <strong>Interest</strong>
-                            ${loan.interest_rate}%
-                        </p>
-                    ` : ''}
-                    ${loan.approval_date ? `
-                        <p>
-                            <strong>Approved</strong>
-                            ${new Date(loan.approval_date).toLocaleDateString()}
-                        </p>
-                    ` : ''}
-                    ${loan.disbursement_date ? `
-                        <p>
-                            <strong>Disbursed</strong>
-                            ${new Date(loan.disbursement_date).toLocaleDateString()}
-                        </p>
-                    ` : ''}
+                    <p><strong>Purpose</strong> ${loan.purpose}</p>
+                    <p><strong>Tenure</strong> ${loan.tenure} months</p>
+                    <p><strong>Applied</strong> ${new Date(loan.application_date).toLocaleDateString()}</p>
+                    ${loan.interest_rate ? `<p><strong>Interest</strong> ${loan.interest_rate}%</p>` : ''}
+                    ${loan.approval_date ? `<p><strong>Approved</strong> ${new Date(loan.approval_date).toLocaleDateString()}</p>` : ''}
+                    ${loan.disbursement_date ? `<p><strong>Disbursed</strong> ${new Date(loan.disbursement_date).toLocaleDateString()}</p>` : ''}
                 </div>
                 ${loan.status === 'approved' ? `
                     <div class="loan-actions">
@@ -306,7 +278,6 @@ function makePayment(loanId) {
     showToast('Payment feature coming soon! You can make payments via M-Pesa.', 'info');
 }
 
-// Loan Calculator
 function setupLoanCalculator() {
     const amountInput = document.getElementById('loanAmount');
     const tenureSelect = document.getElementById('loanTenure');
@@ -325,7 +296,7 @@ function calculateLoanSummary() {
     const summaryDiv = document.getElementById('loanSummary');
     
     if (amount >= 10000 && tenure) {
-        const interestRate = 0.05; // 5% per annum
+        const interestRate = 0.05;
         const totalInterest = amount * interestRate * (tenure / 12);
         const totalRepayment = amount + totalInterest;
         const monthlyPayment = totalRepayment / tenure;
@@ -346,7 +317,6 @@ function calculateLoanSummary() {
     }
 }
 
-// Edit Profile
 function editProfile() {
     const modal = document.getElementById('editProfileModal');
     const editFullName = document.getElementById('editFullName');
