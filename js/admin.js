@@ -1,4 +1,4 @@
-// js/admin.js - Complete Working Version
+// js/admin.js - Complete Working Version with Proper Joins
 let currentTab = 'pending';
 let adminUser = null;
 
@@ -151,33 +151,43 @@ function switchTab(tab) {
 // ============ PENDING LOANS ============
 async function loadPendingLoans() {
     try {
+        // First get all loans
         const { data: loans, error } = await supabaseClient
             .from('loans')
-            .select(`
-                *,
-                users:user_id (
-                    full_name,
-                    email,
-                    phone,
-                    id_number,
-                    profile_picture_url
-                )
-            `)
+            .select('*')
             .eq('status', 'pending')
             .order('application_date', { ascending: false });
         
         if (error) throw error;
         
+        // Then get user data for each loan
+        const loansWithUsers = await Promise.all((loans || []).map(async (loan) => {
+            if (loan.user_id) {
+                const { data: user, error: userError } = await supabaseClient
+                    .from('users')
+                    .select('full_name, email, phone, id_number, profile_picture_url')
+                    .eq('id', loan.user_id)
+                    .single();
+                
+                if (userError) {
+                    console.warn('Error fetching user for loan:', userError);
+                    return { ...loan, users: null };
+                }
+                return { ...loan, users: user };
+            }
+            return { ...loan, users: null };
+        }));
+        
         const container = document.getElementById('pendingLoansList');
         const countDisplay = document.getElementById('pendingCountDisplay');
         
         if (countDisplay) {
-            countDisplay.textContent = `${loans?.length || 0} applications`;
+            countDisplay.textContent = `${loansWithUsers?.length || 0} applications`;
         }
         
         if (!container) return;
         
-        if (!loans || loans.length === 0) {
+        if (!loansWithUsers || loansWithUsers.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-check-circle"></i>
@@ -188,7 +198,7 @@ async function loadPendingLoans() {
             return;
         }
         
-        container.innerHTML = loans.map(loan => {
+        container.innerHTML = loansWithUsers.map(loan => {
             const user = loan.users || {};
             return `
             <div class="loan-card">
@@ -238,7 +248,7 @@ async function loadPendingLoans() {
         
     } catch (error) {
         console.error('Error loading pending loans:', error);
-        showToast('Error loading pending loans', 'error');
+        showToast('Error loading pending loans: ' + error.message, 'error');
     }
 }
 
@@ -260,33 +270,43 @@ async function loadRejectedLoans() {
 // ============ LOANS BY STATUS ============
 async function loadLoansByStatus(status, containerId, countId) {
     try {
+        // First get all loans
         const { data: loans, error } = await supabaseClient
             .from('loans')
-            .select(`
-                *,
-                users:user_id (
-                    full_name,
-                    email,
-                    phone,
-                    id_number,
-                    profile_picture_url
-                )
-            `)
+            .select('*')
             .eq('status', status)
             .order('application_date', { ascending: false });
         
         if (error) throw error;
         
+        // Then get user data for each loan
+        const loansWithUsers = await Promise.all((loans || []).map(async (loan) => {
+            if (loan.user_id) {
+                const { data: user, error: userError } = await supabaseClient
+                    .from('users')
+                    .select('full_name, email, phone, id_number, profile_picture_url')
+                    .eq('id', loan.user_id)
+                    .single();
+                
+                if (userError) {
+                    console.warn('Error fetching user for loan:', userError);
+                    return { ...loan, users: null };
+                }
+                return { ...loan, users: user };
+            }
+            return { ...loan, users: null };
+        }));
+        
         const container = document.getElementById(containerId);
         const countDisplay = document.getElementById(countId);
         
         if (countDisplay) {
-            countDisplay.textContent = `${loans?.length || 0} applications`;
+            countDisplay.textContent = `${loansWithUsers?.length || 0} applications`;
         }
         
         if (!container) return;
         
-        if (!loans || loans.length === 0) {
+        if (!loansWithUsers || loansWithUsers.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -296,11 +316,12 @@ async function loadLoansByStatus(status, containerId, countId) {
             return;
         }
         
-        container.innerHTML = loans.map(loan => {
+        const statusClass = status === 'approved' ? 'approved' : 
+                           status === 'disbursed' ? 'disbursed' : 
+                           status === 'rejected' ? 'rejected' : '';
+        
+        container.innerHTML = loansWithUsers.map(loan => {
             const user = loan.users || {};
-            const statusClass = status === 'approved' ? 'approved' : 
-                               status === 'disbursed' ? 'disbursed' : 
-                               status === 'rejected' ? 'rejected' : '';
             return `
             <div class="loan-card">
                 <div class="loan-card-header">
@@ -361,7 +382,7 @@ async function loadLoansByStatus(status, containerId, countId) {
         
     } catch (error) {
         console.error(`Error loading ${status} loans:`, error);
-        showToast(`Error loading ${status} loans`, 'error');
+        showToast(`Error loading ${status} loans: ` + error.message, 'error');
     }
 }
 
@@ -417,7 +438,7 @@ async function loadUsers() {
         
     } catch (error) {
         console.error('Error loading users:', error);
-        showToast('Error loading users', 'error');
+        showToast('Error loading users: ' + error.message, 'error');
     }
 }
 
@@ -494,7 +515,7 @@ async function loadKYCVerifications() {
         
     } catch (error) {
         console.error('Error loading KYC verifications:', error);
-        showToast('Error loading KYC verifications', 'error');
+        showToast('Error loading KYC verifications: ' + error.message, 'error');
     }
 }
 
