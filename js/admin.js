@@ -1,4 +1,4 @@
-// js/admin.js - Complete Working Version for Your Database Structure
+// js/admin.js - Complete Working Version with Debugging
 let currentTab = 'pending';
 let adminUser = null;
 
@@ -94,6 +94,8 @@ async function loadAdminStats() {
         if (totalUsersEl) totalUsersEl.textContent = userCount || 0;
         if (totalDisbursedEl) totalDisbursedEl.textContent = `KES ${totalDisbursed.toLocaleString()}`;
         if (kycVerifiedEl) kycVerifiedEl.textContent = kycCount || 0;
+        
+        console.log('Admin stats loaded:', { pendingCount, userCount, kycCount, totalDisbursed });
         
     } catch (error) {
         console.error('Error loading admin stats:', error);
@@ -349,11 +351,12 @@ async function loadLoansByStatus(status, containerId, countId) {
     }
 }
 
-// ============ USERS LIST ============
+// ============ USERS LIST - FIXED ============
 async function loadUsers() {
     try {
         console.log('Loading users...');
         
+        // Get all users from the database
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
@@ -364,7 +367,8 @@ async function loadUsers() {
             throw error;
         }
         
-        console.log(`Found ${users?.length || 0} users`);
+        console.log(`Found ${users?.length || 0} users in database`);
+        console.log('Users data:', users);
         
         const container = document.getElementById('usersList');
         if (!container) {
@@ -383,8 +387,10 @@ async function loadUsers() {
         }
         
         let html = '';
-        users.forEach(user => {
+        users.forEach((user, index) => {
             const displayName = user.full_name || 'Unknown';
+            console.log(`User ${index + 1}:`, user.email, user.full_name);
+            
             html += `
             <div class="user-item">
                 <div class="user-info">
@@ -414,7 +420,7 @@ async function loadUsers() {
         });
         
         container.innerHTML = html;
-        console.log('Users rendered successfully');
+        console.log(`Users rendered successfully - ${users.length} users displayed`);
         
     } catch (error) {
         console.error('Error loading users:', error);
