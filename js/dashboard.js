@@ -2,8 +2,6 @@
 let dashboardUser = null;
 let userData = null;
 let allLoans = [];
-
-// KYC Document tracking
 let kycProfileFile = null;
 let kycIdFile = null;
 
@@ -25,7 +23,6 @@ async function checkUserAuth() {
         }
         dashboardUser = user;
         
-        // Check if admin
         try {
             const { data: userData } = await supabaseClient
                 .from('users')
@@ -58,7 +55,6 @@ async function loadUserProfile() {
         
         userData = data;
         
-        // Update profile UI
         const userName = document.getElementById('userName');
         const userEmail = document.getElementById('userEmail');
         const userPhone = document.getElementById('userPhone');
@@ -78,7 +74,6 @@ async function loadUserProfile() {
             }
         }
         
-        // Check KYC status
         await checkKYCStatus();
         
     } catch (error) {
@@ -99,9 +94,7 @@ async function checkKYCStatus() {
     
     if (!kycStatusCard) return;
     
-    // Update based on KYC status
     if (userData.kyc_verified === true) {
-        // Verified
         kycStatusCard.className = 'kyc-status-card verified';
         if (kycStatusBadge) {
             kycStatusBadge.className = 'status-badge status-approved';
@@ -118,7 +111,6 @@ async function checkKYCStatus() {
         if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
         
     } else if (userData.id_picture_url && userData.profile_picture_url) {
-        // Documents submitted, pending verification
         kycStatusCard.className = 'kyc-status-card';
         if (kycStatusBadge) {
             kycStatusBadge.className = 'status-badge status-pending';
@@ -148,7 +140,6 @@ async function checkKYCStatus() {
         }
         
     } else if (userData.kyc_rejection_reason) {
-        // Rejected
         kycStatusCard.className = 'kyc-status-card rejected';
         if (kycStatusBadge) {
             kycStatusBadge.className = 'status-badge status-rejected';
@@ -172,7 +163,6 @@ async function checkKYCStatus() {
         if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
         
     } else {
-        // Not submitted
         kycStatusCard.className = 'kyc-status-card';
         if (kycStatusBadge) {
             kycStatusBadge.className = 'status-badge status-pending';
@@ -196,9 +186,7 @@ async function checkKYCStatus() {
     }
 }
 
-// Start KYC Process
 function startKYC() {
-    // Create KYC modal if it doesn't exist
     let kycModal = document.getElementById('kycModal');
     
     if (!kycModal) {
@@ -244,7 +232,6 @@ function startKYC() {
         document.body.appendChild(kycModal);
     }
     
-    // Pre-fill existing documents if any
     if (userData.profile_picture_url) {
         const preview = document.getElementById('kycProfilePreview');
         if (preview) {
@@ -312,48 +299,63 @@ async function submitKYC(event) {
     const originalText = submitBtn.innerHTML;
     
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
     try {
         let profileUrl = userData.profile_picture_url;
         let idUrl = userData.id_picture_url;
         
-        // Upload new profile picture if provided
+        // Upload profile picture if provided
         if (kycProfileFile) {
-            const fileExt = kycProfileFile.name.split('.').pop();
-            const fileName = `${dashboardUser.id}/profile_${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabaseClient.storage
-                .from('profiles')
-                .upload(fileName, kycProfileFile);
-            
-            if (!uploadError) {
+            try {
+                const fileExt = kycProfileFile.name.split('.').pop();
+                const fileName = `${dashboardUser.id}/profile_${Date.now()}.${fileExt}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('profiles')
+                    .upload(fileName, kycProfileFile);
+                
+                if (uploadError) {
+                    console.error('Profile upload error:', uploadError);
+                    throw new Error('Failed to upload profile picture: ' + uploadError.message);
+                }
+                
                 const { data: { publicUrl } } = supabaseClient.storage
                     .from('profiles')
                     .getPublicUrl(fileName);
                 profileUrl = publicUrl;
-            } else {
-                throw new Error('Failed to upload profile picture');
+            } catch (error) {
+                console.error('Profile upload error:', error);
+                throw new Error('Failed to upload profile picture. Please try again.');
             }
         }
         
-        // Upload new ID document if provided
+        // Upload ID document if provided
         if (kycIdFile) {
-            const fileExt = kycIdFile.name.split('.').pop();
-            const fileName = `${dashboardUser.id}/id_${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabaseClient.storage
-                .from('kyc')
-                .upload(fileName, kycIdFile);
-            
-            if (!uploadError) {
+            try {
+                const fileExt = kycIdFile.name.split('.').pop();
+                const fileName = `${dashboardUser.id}/id_${Date.now()}.${fileExt}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('kyc')
+                    .upload(fileName, kycIdFile);
+                
+                if (uploadError) {
+                    console.error('ID upload error:', uploadError);
+                    throw new Error('Failed to upload ID document: ' + uploadError.message);
+                }
+                
                 const { data: { publicUrl } } = supabaseClient.storage
                     .from('kyc')
                     .getPublicUrl(fileName);
                 idUrl = publicUrl;
-            } else {
-                throw new Error('Failed to upload ID document');
+            } catch (error) {
+                console.error('ID upload error:', error);
+                throw new Error('Failed to upload ID document. Please try again.');
             }
         }
         
+        // Check if we have both documents
         if (!profileUrl || !idUrl) {
             throw new Error('Please upload both profile picture and ID document');
         }
@@ -394,7 +396,6 @@ async function submitKYC(event) {
     }
 }
 
-// Load dashboard stats
 async function loadDashboardStats() {
     try {
         const { data: loans, error } = await supabaseClient
@@ -427,11 +428,9 @@ async function loadDashboardStats() {
     }
 }
 
-// Submit loan application
 async function submitLoanApplication(event) {
     event.preventDefault();
     
-    // Check KYC status first
     if (!userData.kyc_verified) {
         showToast('Please complete KYC verification before applying for a loan', 'warning');
         startKYC();
@@ -497,7 +496,6 @@ async function submitLoanApplication(event) {
     }
 }
 
-// Load loan history
 async function loadLoanHistory() {
     try {
         const { data: loans, error } = await supabaseClient
@@ -587,7 +585,6 @@ function makePayment(loanId) {
     showToast('Payment feature coming soon! You can make payments via M-Pesa.', 'info');
 }
 
-// Loan Calculator
 function setupLoanCalculator() {
     const amountInput = document.getElementById('loanAmount');
     const tenureSelect = document.getElementById('loanTenure');
@@ -627,7 +624,6 @@ function calculateLoanSummary() {
     }
 }
 
-// Edit Profile
 function editProfile() {
     const modal = document.getElementById('editProfileModal');
     const editFullName = document.getElementById('editFullName');
@@ -690,7 +686,6 @@ function refreshLoans() {
     showToast('Refreshed!', 'success');
 }
 
-// Toast notification
 function showToast(message, type = 'info') {
     const container = document.querySelector('.toast-container') || createToastContainer();
     const toast = document.createElement('div');
@@ -712,7 +707,6 @@ function createToastContainer() {
     return container;
 }
 
-// Close modal on outside click
 window.onclick = function(event) {
     const modal = document.getElementById('editProfileModal');
     if (event.target === modal) {
