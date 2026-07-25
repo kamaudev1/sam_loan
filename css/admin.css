@@ -1,0 +1,397 @@
+/* css/admin.css */
+.admin-dashboard {
+    padding: 8rem 0 4rem;
+    background: var(--bg-light);
+    min-height: 100vh;
+}
+
+.admin-header {
+    margin-bottom: 2rem;
+}
+
+.admin-header h1 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.admin-stats .stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.admin-stats .stat-card i {
+    font-size: 2rem;
+}
+
+.admin-stats .stat-card h3 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+
+.admin-stats .stat-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Tabs */
+.admin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    background: white;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.tab-btn:hover {
+    background: rgba(26, 35, 126, 0.05);
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.tab-btn i {
+    font-size: 1rem;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.tab-header h2 {
+    color: var(--text-primary);
+}
+
+.tab-header span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.tab-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Loan Cards */
+.loan-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: var(--transition);
+    border: 1px solid #e0e0e0;
+}
+
+.loan-card:hover {
+    box-shadow: var(--shadow);
+    border-color: var(--primary);
+}
+
+.loan-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.loan-card-header h3 {
+    color: var(--text-primary);
+}
+
+.loan-card-header .user-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.loan-card-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.loan-card-details p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.loan-card-details strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.loan-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.loan-card-actions button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-approve {
+    background: var(--success);
+    color: white;
+}
+
+.btn-approve:hover {
+    background: #2e7d32;
+}
+
+.btn-reject {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-reject:hover {
+    background: #c62828;
+}
+
+.btn-disburse {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-disburse:hover {
+    background: var(--primary-dark);
+}
+
+.btn-view {
+    background: var(--secondary);
+    color: var(--primary);
+}
+
+.btn-view:hover {
+    background: var(--secondary-light);
+}
+
+.btn-verify {
+    background: #1a237e;
+    color: white;
+}
+
+.btn-verify:hover {
+    background: #0d1445;
+}
+
+/* User Items */
+.user-item {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.user-item .user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-item .user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-item .user-details strong {
+    display: block;
+    color: var(--text-primary);
+}
+
+.user-item .user-details span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.user-item .user-meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.role-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.role-admin {
+    background: #ffd54f;
+    color: #1a237e;
+}
+
+.role-user {
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+
+/* KYC Items */
+.kyc-item {
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #e0e0e0;
+}
+
+.kyc-item .kyc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.kyc-item .kyc-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.kyc-item .kyc-documents {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.kyc-item .kyc-documents img {
+    max-width: 200px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    cursor: pointer;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #d0d0d0;
+}
+
+.empty-state .subtext {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-tabs {
+        flex-direction: column;
+    }
+
+    .tab-btn {
+        justify-content: center;
+    }
+
+    .loan-card-header {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .loan-card-actions {
+        flex-direction: column;
+    }
+
+    .loan-card-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .user-item {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .user-item .user-info {
+        flex-direction: column;
+    }
+
+    .user-item .user-meta {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .kyc-item .kyc-documents {
+        flex-direction: column;
+    }
+
+    .kyc-item .kyc-documents img {
+        max-width: 100%;
+    }
+}
