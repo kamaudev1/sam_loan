@@ -1,4 +1,4 @@
-// js/admin.js - Complete Working Version with Proper Joins
+// js/admin.js - Complete Working Version with Proper Query Handling
 let currentTab = 'pending';
 let adminUser = null;
 
@@ -23,7 +23,7 @@ async function checkAdminAuth() {
         }
         adminUser = user;
         
-        // Check if user is admin
+        // Check if user is admin - use the email from auth
         const { data: userData, error } = await supabaseClient
             .from('users')
             .select('role')
@@ -151,43 +151,59 @@ function switchTab(tab) {
 // ============ PENDING LOANS ============
 async function loadPendingLoans() {
     try {
-        // First get all loans
+        console.log('Loading pending loans...');
+        
+        // Get all loans with status 'pending'
         const { data: loans, error } = await supabaseClient
             .from('loans')
             .select('*')
             .eq('status', 'pending')
             .order('application_date', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error fetching loans:', error);
+            throw error;
+        }
         
-        // Then get user data for each loan
-        const loansWithUsers = await Promise.all((loans || []).map(async (loan) => {
-            if (loan.user_id) {
-                const { data: user, error: userError } = await supabaseClient
-                    .from('users')
-                    .select('full_name, email, phone, id_number, profile_picture_url')
-                    .eq('id', loan.user_id)
-                    .single();
-                
-                if (userError) {
-                    console.warn('Error fetching user for loan:', userError);
-                    return { ...loan, users: null };
+        console.log(`Found ${loans?.length || 0} pending loans`);
+        
+        // Get user data for each loan using direct queries
+        const loansWithUsers = [];
+        if (loans) {
+            for (const loan of loans) {
+                let userData = null;
+                if (loan.user_id) {
+                    try {
+                        const { data: user, error: userError } = await supabaseClient
+                            .from('users')
+                            .select('full_name, email, phone, id_number, profile_picture_url')
+                            .eq('id', loan.user_id)
+                            .single();
+                        
+                        if (userError) {
+                            console.warn(`Error fetching user for loan ${loan.id}:`, userError);
+                        } else {
+                            userData = user;
+                            console.log(`Found user for loan ${loan.id}:`, user.full_name);
+                        }
+                    } catch (e) {
+                        console.warn(`Exception fetching user for loan ${loan.id}:`, e);
+                    }
                 }
-                return { ...loan, users: user };
+                loansWithUsers.push({ ...loan, users: userData });
             }
-            return { ...loan, users: null };
-        }));
+        }
         
         const container = document.getElementById('pendingLoansList');
         const countDisplay = document.getElementById('pendingCountDisplay');
         
         if (countDisplay) {
-            countDisplay.textContent = `${loansWithUsers?.length || 0} applications`;
+            countDisplay.textContent = `${loansWithUsers.length} applications`;
         }
         
         if (!container) return;
         
-        if (!loansWithUsers || loansWithUsers.length === 0) {
+        if (loansWithUsers.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-check-circle"></i>
@@ -270,43 +286,58 @@ async function loadRejectedLoans() {
 // ============ LOANS BY STATUS ============
 async function loadLoansByStatus(status, containerId, countId) {
     try {
-        // First get all loans
+        console.log(`Loading ${status} loans...`);
+        
+        // Get all loans with the given status
         const { data: loans, error } = await supabaseClient
             .from('loans')
             .select('*')
             .eq('status', status)
             .order('application_date', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error(`Error fetching ${status} loans:`, error);
+            throw error;
+        }
         
-        // Then get user data for each loan
-        const loansWithUsers = await Promise.all((loans || []).map(async (loan) => {
-            if (loan.user_id) {
-                const { data: user, error: userError } = await supabaseClient
-                    .from('users')
-                    .select('full_name, email, phone, id_number, profile_picture_url')
-                    .eq('id', loan.user_id)
-                    .single();
-                
-                if (userError) {
-                    console.warn('Error fetching user for loan:', userError);
-                    return { ...loan, users: null };
+        console.log(`Found ${loans?.length || 0} ${status} loans`);
+        
+        // Get user data for each loan
+        const loansWithUsers = [];
+        if (loans) {
+            for (const loan of loans) {
+                let userData = null;
+                if (loan.user_id) {
+                    try {
+                        const { data: user, error: userError } = await supabaseClient
+                            .from('users')
+                            .select('full_name, email, phone, id_number, profile_picture_url')
+                            .eq('id', loan.user_id)
+                            .single();
+                        
+                        if (userError) {
+                            console.warn(`Error fetching user for loan ${loan.id}:`, userError);
+                        } else {
+                            userData = user;
+                        }
+                    } catch (e) {
+                        console.warn(`Exception fetching user for loan ${loan.id}:`, e);
+                    }
                 }
-                return { ...loan, users: user };
+                loansWithUsers.push({ ...loan, users: userData });
             }
-            return { ...loan, users: null };
-        }));
+        }
         
         const container = document.getElementById(containerId);
         const countDisplay = document.getElementById(countId);
         
         if (countDisplay) {
-            countDisplay.textContent = `${loansWithUsers?.length || 0} applications`;
+            countDisplay.textContent = `${loansWithUsers.length} applications`;
         }
         
         if (!container) return;
         
-        if (!loansWithUsers || loansWithUsers.length === 0) {
+        if (loansWithUsers.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -389,12 +420,19 @@ async function loadLoansByStatus(status, containerId, countId) {
 // ============ USERS LIST ============
 async function loadUsers() {
     try {
+        console.log('Loading users...');
+        
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error fetching users:', error);
+            throw error;
+        }
+        
+        console.log(`Found ${users?.length || 0} users`);
         
         const container = document.getElementById('usersList');
         
@@ -410,16 +448,21 @@ async function loadUsers() {
             return;
         }
         
-        container.innerHTML = users.map(user => `
+        container.innerHTML = users.map(user => {
+            // Get the user's full name from the available fields
+            const displayName = user.full_name || user.raw_user_meta_data?.full_name || 'Unknown';
+            const userEmail = user.email || user.raw_user_meta_data?.email || 'No email';
+            
+            return `
             <div class="user-item">
                 <div class="user-info">
-                    <img src="${user.profile_picture_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=1a237e&color=fff&size=50`}" 
-                         alt="${user.full_name}" 
+                    <img src="${user.profile_picture_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1a237e&color=fff&size=50`}" 
+                         alt="${displayName}" 
                          class="user-avatar"
-                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=1a237e&color=fff&size=50'">
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1a237e&color=fff&size=50'">
                     <div class="user-details">
-                        <strong>${user.full_name || 'Unknown'}</strong>
-                        <span>${user.email || 'No email'}</span>
+                        <strong>${displayName}</strong>
+                        <span>${userEmail}</span>
                         <span>•</span>
                         <span>ID: ${user.id_number || 'N/A'}</span>
                         ${user.phone ? `<span>•</span><span>${user.phone}</span>` : ''}
@@ -434,7 +477,7 @@ async function loadUsers() {
                     <small>Joined: ${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</small>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
         
     } catch (error) {
         console.error('Error loading users:', error);
@@ -445,6 +488,8 @@ async function loadUsers() {
 // ============ KYC VERIFICATIONS ============
 async function loadKYCVerifications() {
     try {
+        console.log('Loading KYC verifications...');
+        
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
@@ -452,7 +497,12 @@ async function loadKYCVerifications() {
             .not('id_picture_url', 'is', null)
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error fetching KYC users:', error);
+            throw error;
+        }
+        
+        console.log(`Found ${users?.length || 0} KYC pending users`);
         
         const container = document.getElementById('kycList');
         const countDisplay = document.getElementById('kycCountDisplay');
@@ -474,11 +524,13 @@ async function loadKYCVerifications() {
             return;
         }
         
-        container.innerHTML = users.map(user => `
+        container.innerHTML = users.map(user => {
+            const displayName = user.full_name || 'Unknown';
+            return `
             <div class="kyc-item">
                 <div class="kyc-header">
                     <div>
-                        <h3>${user.full_name || 'Unknown'}</h3>
+                        <h3>${displayName}</h3>
                         <p>${user.email || 'No email'} • ${user.phone || 'No phone'}</p>
                         <p>ID Number: ${user.id_number || 'N/A'}</p>
                     </div>
@@ -511,7 +563,7 @@ async function loadKYCVerifications() {
                     </button>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
         
     } catch (error) {
         console.error('Error loading KYC verifications:', error);
@@ -537,20 +589,6 @@ async function verifyKYC(userId) {
             .eq('id', userId);
         
         if (error) throw error;
-        
-        // Log the verification
-        try {
-            await supabaseClient
-                .from('kyc_logs')
-                .insert([{
-                    user_id: userId,
-                    action: 'verified',
-                    details: { verified_by: user.email },
-                    performed_by: user.id
-                }]);
-        } catch (e) {
-            console.warn('Could not log KYC action:', e);
-        }
         
         showToast('KYC verified successfully!', 'success');
         await loadKYCVerifications();
@@ -585,20 +623,6 @@ async function rejectKYC(userId) {
             .eq('id', userId);
         
         if (error) throw error;
-        
-        // Log the rejection
-        try {
-            await supabaseClient
-                .from('kyc_logs')
-                .insert([{
-                    user_id: userId,
-                    action: 'rejected',
-                    details: { reason: reason, rejected_by: user.email },
-                    performed_by: user.id
-                }]);
-        } catch (e) {
-            console.warn('Could not log KYC action:', e);
-        }
         
         showToast('KYC rejected', 'info');
         await loadKYCVerifications();
