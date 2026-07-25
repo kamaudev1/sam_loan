@@ -3,11 +3,16 @@ let dashboardUser = null;
 let userData = null;
 let allLoans = [];
 
+// KYC Document tracking
+let kycProfileFile = null;
+let kycIdFile = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     await checkUserAuth();
     await loadUserProfile();
     await loadDashboardStats();
     await loadLoanHistory();
+    await checkKYCStatus();
     setupLoanCalculator();
 });
 
@@ -59,7 +64,6 @@ async function loadUserProfile() {
         const userPhone = document.getElementById('userPhone');
         const userIdNumber = document.getElementById('userIdNumber');
         const profileAvatar = document.getElementById('profileAvatar');
-        const kycStatus = document.getElementById('kycStatus');
         
         if (userName) userName.textContent = `Welcome, ${data.full_name}!`;
         if (userEmail) userEmail.textContent = data.email;
@@ -74,15 +78,8 @@ async function loadUserProfile() {
             }
         }
         
-        if (kycStatus) {
-            if (data.kyc_verified) {
-                kycStatus.className = 'profile-status verified';
-                kycStatus.innerHTML = '<i class="fas fa-check-circle"></i> KYC Verified';
-            } else {
-                kycStatus.className = 'profile-status';
-                kycStatus.innerHTML = '<i class="fas fa-clock"></i> KYC Pending';
-            }
-        }
+        // Check KYC status
+        await checkKYCStatus();
         
     } catch (error) {
         console.error('Error loading user profile:', error);
@@ -90,6 +87,314 @@ async function loadUserProfile() {
     }
 }
 
+async function checkKYCStatus() {
+    if (!userData) return;
+    
+    const kycStatusCard = document.getElementById('kycStatusCard');
+    const kycStatusBadge = document.getElementById('kycStatusBadge');
+    const kycStatusMessage = document.getElementById('kycStatusMessage');
+    const kycActionButtons = document.getElementById('kycActionButtons');
+    const kycSubmittedInfo = document.getElementById('kycSubmittedInfo');
+    const kycSubmittedDate = document.getElementById('kycSubmittedDate');
+    
+    if (!kycStatusCard) return;
+    
+    // Update based on KYC status
+    if (userData.kyc_verified === true) {
+        // Verified
+        kycStatusCard.className = 'kyc-status-card verified';
+        if (kycStatusBadge) {
+            kycStatusBadge.className = 'status-badge status-approved';
+            kycStatusBadge.textContent = 'VERIFIED';
+        }
+        if (kycStatusMessage) {
+            kycStatusMessage.innerHTML = `
+                <p><i class="fas fa-check-circle" style="color: var(--success);"></i> 
+                Your KYC has been verified! You can now apply for loans.</p>
+                ${userData.kyc_verified_at ? `<p><small>Verified on: ${new Date(userData.kyc_verified_at).toLocaleDateString()}</small></p>` : ''}
+            `;
+        }
+        if (kycActionButtons) kycActionButtons.style.display = 'none';
+        if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
+        
+    } else if (userData.id_picture_url && userData.profile_picture_url) {
+        // Documents submitted, pending verification
+        kycStatusCard.className = 'kyc-status-card';
+        if (kycStatusBadge) {
+            kycStatusBadge.className = 'status-badge status-pending';
+            kycStatusBadge.textContent = 'PENDING';
+        }
+        if (kycStatusMessage) {
+            kycStatusMessage.innerHTML = `
+                <p><i class="fas fa-clock" style="color: var(--warning);"></i> 
+                Your documents have been submitted and are pending verification.</p>
+                <p><small>Please wait for admin approval. This usually takes 24-48 hours.</small></p>
+            `;
+        }
+        if (kycActionButtons) {
+            kycActionButtons.innerHTML = `
+                <button class="btn btn-secondary" onclick="startKYC()">
+                    <i class="fas fa-edit"></i> Update Documents
+                </button>
+            `;
+        }
+        if (kycSubmittedInfo) {
+            kycSubmittedInfo.style.display = 'block';
+            if (kycSubmittedDate) {
+                kycSubmittedDate.textContent = userData.kyc_submitted_at ? 
+                    new Date(userData.kyc_submitted_at).toLocaleDateString() : 
+                    'Recent';
+            }
+        }
+        
+    } else if (userData.kyc_rejection_reason) {
+        // Rejected
+        kycStatusCard.className = 'kyc-status-card rejected';
+        if (kycStatusBadge) {
+            kycStatusBadge.className = 'status-badge status-rejected';
+            kycStatusBadge.textContent = 'REJECTED';
+        }
+        if (kycStatusMessage) {
+            kycStatusMessage.innerHTML = `
+                <p><i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> 
+                Your KYC verification was rejected.</p>
+                <p><strong>Reason:</strong> ${userData.kyc_rejection_reason}</p>
+                <p><small>Please upload new documents for verification.</small></p>
+            `;
+        }
+        if (kycActionButtons) {
+            kycActionButtons.innerHTML = `
+                <button class="btn btn-primary" onclick="startKYC()">
+                    <i class="fas fa-upload"></i> Resubmit Documents
+                </button>
+            `;
+        }
+        if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
+        
+    } else {
+        // Not submitted
+        kycStatusCard.className = 'kyc-status-card';
+        if (kycStatusBadge) {
+            kycStatusBadge.className = 'status-badge status-pending';
+            kycStatusBadge.textContent = 'NOT SUBMITTED';
+        }
+        if (kycStatusMessage) {
+            kycStatusMessage.innerHTML = `
+                <p><i class="fas fa-info-circle"></i> 
+                Please complete your KYC verification to access all features.</p>
+                <p><small>You need to upload your profile picture and ID document.</small></p>
+            `;
+        }
+        if (kycActionButtons) {
+            kycActionButtons.innerHTML = `
+                <button class="btn btn-primary" onclick="startKYC()">
+                    <i class="fas fa-upload"></i> Start KYC Verification
+                </button>
+            `;
+        }
+        if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
+    }
+}
+
+// Start KYC Process
+function startKYC() {
+    // Create KYC modal if it doesn't exist
+    let kycModal = document.getElementById('kycModal');
+    
+    if (!kycModal) {
+        kycModal = document.createElement('div');
+        kycModal.id = 'kycModal';
+        kycModal.className = 'modal';
+        kycModal.innerHTML = `
+            <div class="modal-content kyc-modal-content">
+                <span class="close" onclick="closeKYCModal()">&times;</span>
+                <div class="auth-header">
+                    <h2><i class="fas fa-id-card"></i> KYC Verification</h2>
+                    <p>Please upload your documents for verification</p>
+                </div>
+                <form id="kycForm" onsubmit="submitKYC(event)" enctype="multipart/form-data">
+                    <div class="kyc-document-upload">
+                        <div class="kyc-document-box" id="profileBox">
+                            <i class="fas fa-user-circle"></i>
+                            <h4>Profile Picture</h4>
+                            <p>Upload a clear photo of yourself</p>
+                            <input type="file" id="kycProfilePicture" accept="image/*" onchange="previewKYCDocument(this, 'profile')" required>
+                            <img id="kycProfilePreview" class="kyc-document-preview" style="display:none;" alt="Profile preview">
+                            <div id="profileStatus" class="kyc-document-status"></div>
+                        </div>
+                        <div class="kyc-document-box" id="idBox">
+                            <i class="fas fa-id-card"></i>
+                            <h4>ID Document</h4>
+                            <p>Upload your national ID or passport</p>
+                            <input type="file" id="kycIdDocument" accept="image/*" onchange="previewKYCDocument(this, 'id')" required>
+                            <img id="kycIdPreview" class="kyc-document-preview" style="display:none;" alt="ID preview">
+                            <div id="idStatus" class="kyc-document-status"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-sticky-note"></i> Additional Notes (Optional)</label>
+                        <textarea id="kycNotes" placeholder="Any additional information..." rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full" id="kycSubmitBtn">
+                        <i class="fas fa-paper-plane"></i> Submit for Verification
+                    </button>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(kycModal);
+    }
+    
+    // Pre-fill existing documents if any
+    if (userData.profile_picture_url) {
+        const preview = document.getElementById('kycProfilePreview');
+        if (preview) {
+            preview.src = userData.profile_picture_url;
+            preview.style.display = 'block';
+            document.getElementById('profileBox')?.classList.add('has-file');
+            document.getElementById('profileStatus').innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Uploaded';
+            document.getElementById('profileStatus').className = 'kyc-document-status uploaded';
+        }
+    }
+    
+    if (userData.id_picture_url) {
+        const preview = document.getElementById('kycIdPreview');
+        if (preview) {
+            preview.src = userData.id_picture_url;
+            preview.style.display = 'block';
+            document.getElementById('idBox')?.classList.add('has-file');
+            document.getElementById('idStatus').innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Uploaded';
+            document.getElementById('idStatus').className = 'kyc-document-status uploaded';
+        }
+    }
+    
+    kycModal.style.display = 'flex';
+}
+
+function closeKYCModal() {
+    const modal = document.getElementById('kycModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function previewKYCDocument(input, type) {
+    const previewId = type === 'profile' ? 'kycProfilePreview' : 'kycIdPreview';
+    const statusId = type === 'profile' ? 'profileStatus' : 'idStatus';
+    const boxId = type === 'profile' ? 'profileBox' : 'idBox';
+    
+    const preview = document.getElementById(previewId);
+    const status = document.getElementById(statusId);
+    const box = document.getElementById(boxId);
+    
+    if (input.files && input.files[0] && preview) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            if (box) box.classList.add('has-file');
+            if (status) {
+                status.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Ready to upload';
+                status.className = 'kyc-document-status uploaded';
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+        
+        if (type === 'profile') {
+            kycProfileFile = input.files[0];
+        } else if (type === 'id') {
+            kycIdFile = input.files[0];
+        }
+    }
+}
+
+async function submitKYC(event) {
+    event.preventDefault();
+    
+    const submitBtn = document.getElementById('kycSubmitBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    
+    try {
+        let profileUrl = userData.profile_picture_url;
+        let idUrl = userData.id_picture_url;
+        
+        // Upload new profile picture if provided
+        if (kycProfileFile) {
+            const fileExt = kycProfileFile.name.split('.').pop();
+            const fileName = `${dashboardUser.id}/profile_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabaseClient.storage
+                .from('profiles')
+                .upload(fileName, kycProfileFile);
+            
+            if (!uploadError) {
+                const { data: { publicUrl } } = supabaseClient.storage
+                    .from('profiles')
+                    .getPublicUrl(fileName);
+                profileUrl = publicUrl;
+            } else {
+                throw new Error('Failed to upload profile picture');
+            }
+        }
+        
+        // Upload new ID document if provided
+        if (kycIdFile) {
+            const fileExt = kycIdFile.name.split('.').pop();
+            const fileName = `${dashboardUser.id}/id_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabaseClient.storage
+                .from('kyc')
+                .upload(fileName, kycIdFile);
+            
+            if (!uploadError) {
+                const { data: { publicUrl } } = supabaseClient.storage
+                    .from('kyc')
+                    .getPublicUrl(fileName);
+                idUrl = publicUrl;
+            } else {
+                throw new Error('Failed to upload ID document');
+            }
+        }
+        
+        if (!profileUrl || !idUrl) {
+            throw new Error('Please upload both profile picture and ID document');
+        }
+        
+        // Update user record
+        const notes = document.getElementById('kycNotes')?.value || '';
+        const { error: updateError } = await supabaseClient
+            .from('users')
+            .update({
+                profile_picture_url: profileUrl,
+                id_picture_url: idUrl,
+                kyc_submitted_at: new Date().toISOString(),
+                kyc_verified: false,
+                kyc_rejection_reason: null,
+                admin_notes: notes || null
+            })
+            .eq('id', dashboardUser.id);
+        
+        if (updateError) throw updateError;
+        
+        // Reload user data
+        await loadUserProfile();
+        await checkKYCStatus();
+        
+        showToast('KYC documents submitted successfully! Pending verification.', 'success');
+        closeKYCModal();
+        
+        // Reset file variables
+        kycProfileFile = null;
+        kycIdFile = null;
+        
+    } catch (error) {
+        console.error('KYC submission error:', error);
+        showToast(error.message || 'Error submitting KYC documents', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
+
+// Load dashboard stats
 async function loadDashboardStats() {
     try {
         const { data: loans, error } = await supabaseClient
@@ -122,8 +427,16 @@ async function loadDashboardStats() {
     }
 }
 
+// Submit loan application
 async function submitLoanApplication(event) {
     event.preventDefault();
+    
+    // Check KYC status first
+    if (!userData.kyc_verified) {
+        showToast('Please complete KYC verification before applying for a loan', 'warning');
+        startKYC();
+        return;
+    }
     
     const amount = parseFloat(document.getElementById('loanAmount').value);
     const tenure = parseInt(document.getElementById('loanTenure').value);
@@ -142,11 +455,6 @@ async function submitLoanApplication(event) {
     
     if (!purpose) {
         showToast('Please select a loan purpose', 'error');
-        return;
-    }
-    
-    if (!userData.kyc_verified) {
-        showToast('Please complete KYC verification before applying', 'warning');
         return;
     }
     
@@ -189,6 +497,7 @@ async function submitLoanApplication(event) {
     }
 }
 
+// Load loan history
 async function loadLoanHistory() {
     try {
         const { data: loans, error } = await supabaseClient
@@ -278,6 +587,7 @@ function makePayment(loanId) {
     showToast('Payment feature coming soon! You can make payments via M-Pesa.', 'info');
 }
 
+// Loan Calculator
 function setupLoanCalculator() {
     const amountInput = document.getElementById('loanAmount');
     const tenureSelect = document.getElementById('loanTenure');
@@ -317,6 +627,7 @@ function calculateLoanSummary() {
     }
 }
 
+// Edit Profile
 function editProfile() {
     const modal = document.getElementById('editProfileModal');
     const editFullName = document.getElementById('editFullName');
@@ -379,15 +690,45 @@ function refreshLoans() {
     showToast('Refreshed!', 'success');
 }
 
+// Toast notification
+function showToast(message, type = 'info') {
+    const container = document.querySelector('.toast-container') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+    return container;
+}
+
 // Close modal on outside click
 window.onclick = function(event) {
     const modal = document.getElementById('editProfileModal');
     if (event.target === modal) {
         closeEditProfile();
     }
+    const kycModal = document.getElementById('kycModal');
+    if (event.target === kycModal) {
+        closeKYCModal();
+    }
 };
 
 // Make functions globally accessible
+window.startKYC = startKYC;
+window.closeKYCModal = closeKYCModal;
+window.previewKYCDocument = previewKYCDocument;
+window.submitKYC = submitKYC;
 window.submitLoanApplication = submitLoanApplication;
 window.acceptLoan = acceptLoan;
 window.makePayment = makePayment;
@@ -395,3 +736,4 @@ window.editProfile = editProfile;
 window.closeEditProfile = closeEditProfile;
 window.updateProfile = updateProfile;
 window.refreshLoans = refreshLoans;
+window.showToast = showToast;
