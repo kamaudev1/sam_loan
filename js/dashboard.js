@@ -1,4 +1,4 @@
-// js/dashboard.js - Complete Working Version
+// js/dashboard.js - Complete Working Version with Fixed Column Names
 let dashboardUser = null;
 let userData = null;
 let allLoans = [];
@@ -54,9 +54,32 @@ async function checkUserAuth() {
 // ============ USER PROFILE ============
 async function loadUserProfile() {
     try {
+        // Select only columns that exist
         const { data, error } = await supabaseClient
             .from('users')
-            .select('*')
+            .select(`
+                id,
+                email,
+                full_name,
+                id_number,
+                phone,
+                date_of_birth,
+                gender,
+                occupation,
+                monthly_income,
+                role,
+                profile_picture_url,
+                id_picture_url,
+                kyc_verified,
+                kyc_submitted_at,
+                kyc_verified_at,
+                kyc_verified_by,
+                kyc_rejection_reason,
+                terms_accepted,
+                terms_accepted_date,
+                created_at,
+                updated_at
+            `)
             .eq('id', dashboardUser.id)
             .single();
         
@@ -106,15 +129,24 @@ async function checkKYCStatus() {
     if (!kycStatusCard) return;
     
     try {
-        // Fetch fresh user data
+        // Fetch fresh user data with only existing columns
         const { data, error } = await supabaseClient
             .from('users')
-            .select('*')
+            .select(`
+                id,
+                full_name,
+                profile_picture_url,
+                id_picture_url,
+                kyc_verified,
+                kyc_submitted_at,
+                kyc_verified_at,
+                kyc_rejection_reason
+            `)
             .eq('id', dashboardUser.id)
             .single();
         
         if (error) throw error;
-        userData = data;
+        userData = { ...userData, ...data };
         
         if (userData.kyc_verified === true) {
             // VERIFIED
@@ -324,7 +356,7 @@ function previewKYCDocument(input, type) {
     }
 }
 
-// ============ SUBMIT KYC WITH MULTIPLE METHODS ============
+// ============ SUBMIT KYC ============
 async function submitKYC(event) {
     event.preventDefault();
     
@@ -338,23 +370,22 @@ async function submitKYC(event) {
         let profileUrl = userData.profile_picture_url;
         let idUrl = userData.id_picture_url;
         
-        // Method 1: Try Supabase Storage Upload
+        // Upload profile picture
         if (kycProfileFile) {
             try {
                 const uploaded = await uploadToSupabaseStorage('profiles', kycProfileFile, dashboardUser.id);
                 if (uploaded) {
                     profileUrl = uploaded;
                 } else {
-                    // Method 2: Fallback to Base64
                     profileUrl = await convertToBase64(kycProfileFile);
                 }
             } catch (error) {
                 console.warn('Storage upload failed, trying base64:', error);
-                // Method 2: Fallback to Base64
                 profileUrl = await convertToBase64(kycProfileFile);
             }
         }
         
+        // Upload ID document
         if (kycIdFile) {
             try {
                 const uploaded = await uploadToSupabaseStorage('kyc', kycIdFile, dashboardUser.id);
@@ -374,18 +405,32 @@ async function submitKYC(event) {
             throw new Error('Please upload both profile picture and ID document');
         }
         
-        // Update user record
+        // Update user record - using only existing columns
         const notes = document.getElementById('kycNotes')?.value || '';
+        const updateData = {
+            profile_picture_url: profileUrl,
+            id_picture_url: idUrl,
+            kyc_submitted_at: new Date().toISOString(),
+            kyc_verified: false,
+            kyc_rejection_reason: null
+        };
+        
+        // Only add admin_notes if the column exists (we'll handle it separately)
+        if (notes) {
+            // Try to update admin_notes if column exists
+            try {
+                await supabaseClient
+                    .from('users')
+                    .update({ admin_notes: notes })
+                    .eq('id', dashboardUser.id);
+            } catch (e) {
+                console.warn('admin_notes column not found, skipping');
+            }
+        }
+        
         const { error: updateError } = await supabaseClient
             .from('users')
-            .update({
-                profile_picture_url: profileUrl,
-                id_picture_url: idUrl,
-                kyc_submitted_at: new Date().toISOString(),
-                kyc_verified: false,
-                kyc_rejection_reason: null,
-                admin_notes: notes || null
-            })
+            .update(updateData)
             .eq('id', dashboardUser.id);
         
         if (updateError) throw updateError;
