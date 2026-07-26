@@ -10,25 +10,27 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="dashboard-container">
+        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
                 <i class="fas fa-hand-holding-usd"></i>
                 <span>SAM Loans</span>
             </div>
             
-            <div class="sidebar-user">
-                <div class="user-avatar" id="userAvatar">
-                    <i class="fas fa-user"></i>
+            <div class="sidebar-user" id="sidebarUser">
+                <div class="user-avatar" id="userAvatarContainer">
+                    <img id="userAvatarImg" src="" alt="Profile" style="display:none;">
+                    <i class="fas fa-user" id="userAvatarIcon"></i>
                 </div>
                 <div class="user-info">
                     <h4 id="userName">Loading...</h4>
                     <p id="userEmail">Loading...</p>
+                    <span class="user-role-badge" id="userRoleBadge">User</span>
                 </div>
             </div>
 
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav" id="sidebarNav">
                 <a href="#" class="active" data-page="overview">
                     <i class="fas fa-th-large"></i>
                     <span>Overview</span>
@@ -49,10 +51,16 @@
                     <i class="fas fa-user-cog"></i>
                     <span>Profile</span>
                 </a>
+                <!-- Admin link - hidden by default -->
+                <a href="#" data-page="admin" id="adminNavLink" style="display:none;">
+                    <i class="fas fa-user-shield"></i>
+                    <span>Admin Panel</span>
+                    <span class="badge" id="adminPendingBadge">0</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
-                <button onclick="handleLogout()" class="logout-btn">
+                <button onclick="handleLogout()" class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </button>
@@ -72,6 +80,11 @@
                         <i class="fas fa-bell"></i>
                         <span class="notification-badge" id="notificationBadge">0</span>
                     </button>
+                    <div class="top-bar-user">
+                        <img id="topBarAvatar" src="" alt="Profile" style="display:none;">
+                        <i class="fas fa-user-circle" id="topBarAvatarIcon"></i>
+                        <span id="topBarUserName">User</span>
+                    </div>
                 </div>
             </header>
 
@@ -215,6 +228,7 @@
                             <div class="filter-tabs">
                                 <button class="filter-tab active" data-filter="all">All</button>
                                 <button class="filter-tab" data-filter="pending">Pending</button>
+                                <button class="filter-tab" data-filter="approved">Approved</button>
                                 <button class="filter-tab" data-filter="active">Active</button>
                                 <button class="filter-tab" data-filter="completed">Completed</button>
                                 <button class="filter-tab" data-filter="rejected">Rejected</button>
@@ -247,7 +261,7 @@
                         <div class="card-body">
                             <form id="profileForm" onsubmit="updateProfile(event)">
                                 <div class="profile-avatar">
-                                    <img id="profileAvatar" src="" alt="Profile">
+                                    <img id="profileAvatarPreview" src="" alt="Profile">
                                     <button type="button" class="change-avatar-btn" onclick="document.getElementById('avatarUpload').click()">
                                         <i class="fas fa-camera"></i>
                                     </button>
@@ -322,6 +336,19 @@
                 <p class="text-muted">You will receive a notification once your loan is approved.</p>
             </div>
             <button class="btn btn-primary" onclick="closeModal('loanConfirmationModal')">OK</button>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('logoutModal')">&times;</span>
+            <h2>Confirm Logout</h2>
+            <p>Are you sure you want to logout?</p>
+            <div style="display:flex;gap:1rem;margin-top:1.5rem;justify-content:center;">
+                <button class="btn btn-secondary" onclick="closeModal('logoutModal')">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmLogout()">Logout</button>
+            </div>
         </div>
     </div>
 
