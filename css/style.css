@@ -1,3 +1,95 @@
+/* Notification styles */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 400px;
+}
+
+.notification {
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    border-left: 4px solid #1a237e;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification-success {
+    border-left-color: #4caf50;
+}
+
+.notification-success i {
+    color: #4caf50;
+}
+
+.notification-error {
+    border-left-color: #f44336;
+}
+
+.notification-error i {
+    color: #f44336;
+}
+
+.notification-info {
+    border-left-color: #1a237e;
+}
+
+.notification-info i {
+    color: #1a237e;
+}
+
+.notification i {
+    font-size: 1.25rem;
+}
+
+.notification span {
+    flex: 1;
+    color: #333;
+}
+
+/* Form field error styles */
+.form-group .error {
+    border-color: #f44336 !important;
+}
+
+.field-error {
+    color: #f44336;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+/* Loading spinner */
+.fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive notification */
+@media (max-width: 768px) {
+    .notification-container {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+}
 /* Reset & Base */
 * {
     margin: 0;
