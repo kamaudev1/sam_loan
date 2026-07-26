@@ -1,4 +1,4 @@
-// js/admin.js - CLEAN REWRITTEN VERSION
+// js/admin.js - FIXED VERSION (No Nested Joins)
 let currentTab = 'pending';
 let adminUser = null;
 
@@ -137,20 +137,15 @@ async function loadRejectedLoans() {
     await loadLoansByStatus('rejected', 'rejectedLoansList', 'rejectedCountDisplay');
 }
 
-// ============ LOANS BY STATUS ============
+// ============ LOANS BY STATUS - FIXED ============
 async function loadLoansByStatus(status, containerId, countId) {
     try {
+        console.log(`Loading ${status} loans...`);
+        
+        // Step 1: Get loans only (no join)
         const { data: loans, error } = await supabaseClient
             .from('loans')
-            .select(`
-                *,
-                users!inner (
-                    full_name,
-                    email,
-                    phone,
-                    id_number
-                )
-            `)
+            .select('*')
             .eq('status', status)
             .order('application_date', { ascending: false });
         
@@ -161,16 +156,48 @@ async function loadLoansByStatus(status, containerId, countId) {
         
         console.log(`Found ${loans?.length || 0} ${status} loans`);
         
+        // Step 2: Get user data for each loan separately
+        const loansWithUsers = [];
+        if (loans && loans.length > 0) {
+            for (const loan of loans) {
+                let userData = null;
+                if (loan.user_id) {
+                    try {
+                        const { data: user, error: userError } = await supabaseClient
+                            .from('users')
+                            .select('full_name, email, phone, id_number')
+                            .eq('id', loan.user_id)
+                            .single();
+                        
+                        if (userError) {
+                            console.warn(`User not found for loan ${loan.id}:`, userError.message);
+                        } else {
+                            userData = user;
+                        }
+                    } catch (e) {
+                        console.warn(`Error fetching user for loan ${loan.id}:`, e);
+                    }
+                }
+                loansWithUsers.push({
+                    ...loan,
+                    user: userData
+                });
+            }
+        }
+        
         const container = document.getElementById(containerId);
         const countDisplay = document.getElementById(countId);
         
         if (countDisplay) {
-            countDisplay.textContent = `${loans?.length || 0} applications`;
+            countDisplay.textContent = `${loansWithUsers.length} applications`;
         }
         
-        if (!container) return;
+        if (!container) {
+            console.error(`Container ${containerId} not found`);
+            return;
+        }
         
-        if (!loans || loans.length === 0) {
+        if (loansWithUsers.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -184,9 +211,10 @@ async function loadLoansByStatus(status, containerId, countId) {
                            status === 'disbursed' ? 'disbursed' : 
                            status === 'rejected' ? 'rejected' : 'pending';
         
-        container.innerHTML = loans.map(loan => {
-            const user = loan.users || {};
-            return `
+        let html = '';
+        loansWithUsers.forEach(loan => {
+            const user = loan.user || {};
+            html += `
             <div class="loan-card">
                 <div class="loan-card-header">
                     <div>
@@ -224,7 +252,11 @@ async function loadLoansByStatus(status, containerId, countId) {
                     ` : ''}
                 </div>
             </div>
-        `}).join('');
+        `;
+        });
+        
+        container.innerHTML = html;
+        console.log(`${status} loans rendered successfully`);
         
     } catch (error) {
         console.error(`Error loading ${status} loans:`, error);
@@ -242,12 +274,11 @@ async function loadLoansByStatus(status, containerId, countId) {
     }
 }
 
-// ============ USERS LIST - COMPLETE REWRITE ============
+// ============ USERS LIST ============
 async function loadUsers() {
     try {
         console.log('===== LOADING USERS =====');
         
-        // Get ALL users - simple query
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
@@ -260,7 +291,6 @@ async function loadUsers() {
         
         console.log(`✅ Found ${users?.length || 0} users in database`);
         
-        // Log each user for debugging
         if (users) {
             users.forEach((user, index) => {
                 console.log(`User ${index + 1}:`, {
@@ -289,13 +319,13 @@ async function loadUsers() {
             return;
         }
         
-        // Build HTML for all users
-        const html = users.map(user => {
+        let html = '';
+        users.forEach(user => {
             const displayName = user.full_name || 'Unknown';
             const avatarUrl = user.profile_picture_url || 
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1a237e&color=fff&size=50`;
             
-            return `
+            html += `
             <div class="user-item" style="border-left: 4px solid ${user.role === 'admin' ? '#ffd54f' : '#1a237e'};">
                 <div class="user-info">
                     <img src="${avatarUrl}" 
@@ -320,7 +350,8 @@ async function loadUsers() {
                     <small>Joined: ${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</small>
                 </div>
             </div>
-        `}).join('');
+        `;
+        });
         
         container.innerHTML = html;
         console.log(`✅ ${users.length} users displayed successfully`);
@@ -344,6 +375,8 @@ async function loadUsers() {
 // ============ KYC VERIFICATIONS ============
 async function loadKYCVerifications() {
     try {
+        console.log('Loading KYC verifications...');
+        
         const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
@@ -378,7 +411,9 @@ async function loadKYCVerifications() {
             return;
         }
         
-        container.innerHTML = users.map(user => `
+        let html = '';
+        users.forEach(user => {
+            html += `
             <div class="kyc-item">
                 <div class="kyc-header">
                     <div>
@@ -421,7 +456,11 @@ async function loadKYCVerifications() {
                     </div>
                 ` : ''}
             </div>
-        `).join('');
+        `;
+        });
+        
+        container.innerHTML = html;
+        console.log('KYC verifications rendered successfully');
         
     } catch (error) {
         console.error('Error loading KYC verifications:', error);
