@@ -1,3 +1,198 @@
+/* User Role Badge */
+.user-role-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.user-role-badge.admin {
+    background: #ff6f00;
+    color: white;
+}
+
+.user-role-badge.user {
+    background: #e0e0e0;
+    color: #666;
+}
+
+/* Top Bar User */
+.top-bar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    background: #f5f7fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.top-bar-user:hover {
+    background: #e8eaf6;
+}
+
+.top-bar-user img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.top-bar-user i {
+    font-size: 1.5rem;
+    color: #666;
+}
+
+.top-bar-user span {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Logout Button Enhancement */
+.logout-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: #f44336;
+}
+
+.logout-btn i {
+    color: #ff6f00;
+}
+
+/* Admin Nav Link Enhancement */
+.sidebar-nav a[data-page="admin"] .badge {
+    margin-left: auto;
+    background: #ff6f00;
+    color: white;
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.sidebar-nav a[data-page="admin"]:hover .badge {
+    background: #e65100;
+}
+
+/* Profile Avatar in Sidebar */
+.sidebar-user .user-avatar {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.sidebar-user .user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sidebar-user .user-avatar i {
+    font-size: 1.5rem;
+    color: rgba(255,255,255,0.7);
+}
+
+/* Profile Page Avatar */
+.profile-avatar {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #e0e0e0;
+}
+
+.profile-avatar .change-avatar-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #1a237e;
+    color: white;
+    border: 2px solid white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.profile-avatar .change-avatar-btn:hover {
+    background: #ff6f00;
+    transform: scale(1.1);
+}
+
+/* Logout Modal */
+#logoutModal .modal-content {
+    max-width: 400px;
+    text-align: center;
+}
+
+#logoutModal .modal-content h2 {
+    color: #f44336;
+}
+
+#logoutModal .modal-content .btn-danger {
+    background: #f44336;
+    color: white;
+    padding: 0.75rem 2rem;
+}
+
+#logoutModal .modal-content .btn-danger:hover {
+    background: #d32f2f;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .top-bar-user span {
+        display: none;
+    }
+    
+    .top-bar-user {
+        padding: 0.25rem;
+    }
+    
+    .sidebar-user .user-info h4 {
+        font-size: 0.85rem;
+    }
+    
+    .sidebar-user .user-info p {
+        font-size: 0.7rem;
+    }
+}
+
 /* Dashboard Layout */
 .dashboard-container {
     display: flex;
