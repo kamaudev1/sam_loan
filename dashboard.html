@@ -10,236 +10,322 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <nav class="navbar" id="mainNav">
-        <div class="container">
-            <div class="nav-brand">
+    <!-- Sidebar -->
+    <div class="dashboard-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
                 <i class="fas fa-hand-holding-usd"></i>
-                <h1>SAM Loans</h1>
+                <span>SAM Loans</span>
             </div>
-            <div class="nav-links" id="navLinks">
-                <a href="index.html"><i class="fas fa-home"></i> Home</a>
-                <a href="dashboard.html"><i class="fas fa-chart-pie"></i> Dashboard</a>
-                <a href="admin.html" id="adminLink" style="display:none;"><i class="fas fa-cog"></i> Admin</a>
-                <button class="btn btn-secondary" onclick="handleLogout()">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+            
+            <div class="sidebar-user">
+                <div class="user-avatar" id="userAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-info">
+                    <h4 id="userName">Loading...</h4>
+                    <p id="userEmail">Loading...</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="active" data-page="overview">
+                    <i class="fas fa-th-large"></i>
+                    <span>Overview</span>
+                </a>
+                <a href="#" data-page="apply-loan">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>Apply for Loan</span>
+                </a>
+                <a href="#" data-page="my-loans">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>My Loans</span>
+                </a>
+                <a href="#" data-page="repayments">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Repayments</span>
+                </a>
+                <a href="#" data-page="profile">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Profile</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button onclick="handleLogout()" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
                 </button>
             </div>
-            <div class="hamburger" onclick="toggleMobileMenu()">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-    </nav>
+        </aside>
 
-    <section class="dashboard">
-        <div class="container">
-            <!-- User Profile Summary -->
-            <div class="profile-summary" id="profileSummary">
-                <div class="profile-avatar">
-                    <img id="profileAvatar" src="" alt="Profile">
-                    <div class="profile-status" id="kycStatus">
-                        <i class="fas fa-clock"></i> KYC Pending
-                    </div>
-                </div>
-                <div class="profile-info">
-                    <h2 id="userName">Welcome, User!</h2>
-                    <p><i class="fas fa-envelope"></i> <span id="userEmail">email@example.com</span></p>
-                    <p><i class="fas fa-phone"></i> <span id="userPhone">+254 700 000000</span></p>
-                    <p><i class="fas fa-id-card"></i> ID: <span id="userIdNumber">12345678</span></p>
-                </div>
-                <div class="profile-actions">
-                    <button class="btn btn-secondary" onclick="editProfile()">
-                        <i class="fas fa-edit"></i> Edit Profile
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <button class="menu-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 id="pageTitle">Overview</h2>
+                <div class="top-bar-actions">
+                    <button class="notification-btn" onclick="showNotifications()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge">0</span>
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <!-- KYC Status Card -->
-            <div class="kyc-status-card" id="kycStatusCard">
-                <div class="kyc-status-header">
-                    <h3><i class="fas fa-id-card"></i> KYC Verification Status</h3>
-                    <span id="kycStatusBadge" class="status-badge status-pending">PENDING</span>
-                </div>
-                <div class="kyc-status-content">
-                    <div id="kycStatusMessage">
-                        <p>Your KYC verification is pending. Please upload your documents to get verified.</p>
-                    </div>
-                    <div id="kycActionButtons">
-                        <button class="btn btn-primary" onclick="startKYC()">
-                            <i class="fas fa-upload"></i> Submit Documents
-                        </button>
-                    </div>
-                    <div id="kycSubmittedInfo" style="display:none;">
-                        <p><i class="fas fa-check-circle" style="color: var(--success);"></i> Your documents have been submitted for verification.</p>
-                        <p><small>Submitted on: <span id="kycSubmittedDate"></span></small></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #e3f2fd; color: #0d47a1;">
-                        <i class="fas fa-hand-holding-usd"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3 id="totalBorrowed">KES 0</h3>
-                        <p>Total Borrowed</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3 id="activeLoans">0</h3>
-                        <p>Active Loans</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #fff3e0; color: #e65100;">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3 id="pendingLoans">0</h3>
-                        <p>Pending Applications</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #fce4ec; color: #c62828;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3 id="outstandingBalance">KES 0</h3>
-                        <p>Outstanding Balance</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Loan Application -->
-            <div class="loan-application">
-                <div class="section-header">
-                    <h2>Apply for a Loan</h2>
-                    <p>Get instant access to funds in Kenya Shillings (KES)</p>
-                </div>
-                <div class="application-form-container">
-                    <form id="loanForm" onsubmit="submitLoanApplication(event)">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label><i class="fas fa-coins"></i> Loan Amount (KES)</label>
-                                <div class="amount-input">
-                                    <input type="number" id="loanAmount" min="10000" max="5000000" step="1000" required>
-                                    <span class="currency">KES</span>
-                                </div>
-                                <div class="amount-hint">
-                                    <span>Min: KES 10,000</span>
-                                    <span>Max: KES 5,000,000</span>
-                                </div>
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- Overview Page -->
+                <div id="page-overview" class="page-section active">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <i class="fas fa-hand-holding-usd"></i>
                             </div>
-                            <div class="form-group">
-                                <label><i class="fas fa-calendar-alt"></i> Repayment Period</label>
-                                <select id="loanTenure" required>
-                                    <option value="3">3 months</option>
-                                    <option value="6">6 months</option>
-                                    <option value="12" selected>12 months</option>
-                                    <option value="24">24 months</option>
-                                </select>
+                            <div class="stat-info">
+                                <h3 id="totalLoans">0</h3>
+                                <p>Total Loans</p>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-tag"></i> Loan Purpose</label>
-                            <select id="loanPurpose" required>
-                                <option value="">Select purpose</option>
-                                <option value="business">Business Expansion</option>
-                                <option value="education">Education Fees</option>
-                                <option value="medical">Medical Expenses</option>
-                                <option value="housing">Housing/Construction</option>
-                                <option value="vehicle">Vehicle Purchase</option>
-                                <option value="personal">Personal Needs</option>
-                                <option value="agriculture">Agriculture</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-align-left"></i> Brief Description</label>
-                            <textarea id="loanDescription" rows="3" placeholder="Briefly describe why you need this loan..."></textarea>
-                        </div>
-                        <div class="loan-summary" id="loanSummary" style="display:none;">
-                            <h4>Loan Summary</h4>
-                            <div class="summary-grid">
-                                <div>
-                                    <p>Principal Amount</p>
-                                    <strong id="summaryPrincipal">KES 0</strong>
-                                </div>
-                                <div>
-                                    <p>Interest (5% p.a.)</p>
-                                    <strong id="summaryInterest">KES 0</strong>
-                                </div>
-                                <div>
-                                    <p>Total Repayment</p>
-                                    <strong id="summaryTotal">KES 0</strong>
-                                </div>
-                                <div>
-                                    <p>Monthly Payment</p>
-                                    <strong id="summaryMonthly">KES 0</strong>
-                                </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="activeLoans">0</h3>
+                                <p>Active Loans</p>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-full">
-                            <i class="fas fa-paper-plane"></i> Submit Application
-                        </button>
-                    </form>
-                </div>
-            </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="pendingLoans">0</h3>
+                                <p>Pending</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="totalRepaid">KES 0</h3>
+                                <p>Total Repaid</p>
+                            </div>
+                        </div>
+                    </div>
 
-            <!-- Loan History -->
-            <div class="loan-history">
-                <div class="section-header">
-                    <h2>My Loan History</h2>
-                    <button class="btn btn-secondary" onclick="refreshLoans()">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
+                    <!-- Recent Activity -->
+                    <div class="content-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Recent Loans</h3>
+                                <a href="#" onclick="navigateTo('my-loans')">View All</a>
+                            </div>
+                            <div class="card-body" id="recentLoans">
+                                <p class="text-muted">No loans yet</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <button class="quick-action-btn" onclick="navigateTo('apply-loan')">
+                                    <i class="fas fa-plus-circle"></i>
+                                    Apply for Loan
+                                </button>
+                                <button class="quick-action-btn" onclick="navigateTo('repayments')">
+                                    <i class="fas fa-credit-card"></i>
+                                    Make Payment
+                                </button>
+                                <button class="quick-action-btn" onclick="navigateTo('profile')">
+                                    <i class="fas fa-user-edit"></i>
+                                    Update Profile
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="loanList" class="loan-list">
-                    <div class="loading-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading your loans...</p>
+
+                <!-- Apply Loan Page -->
+                <div id="page-apply-loan" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Apply for a Loan</h3>
+                            <p>Fill in the details below to apply for a loan</p>
+                        </div>
+                        <div class="card-body">
+                            <form id="loanApplicationForm" onsubmit="applyForLoan(event)">
+                                <div class="form-group">
+                                    <label>Loan Amount (KES) *</label>
+                                    <input type="number" id="loanAmount" placeholder="e.g., 50000" required min="1000" step="1000">
+                                </div>
+                                <div class="form-group">
+                                    <label>Repayment Period (Months) *</label>
+                                    <select id="loanTerm" required>
+                                        <option value="">Select period</option>
+                                        <option value="3">3 Months</option>
+                                        <option value="6">6 Months</option>
+                                        <option value="12">12 Months</option>
+                                        <option value="18">18 Months</option>
+                                        <option value="24">24 Months</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Loan Purpose</label>
+                                    <select id="loanPurpose">
+                                        <option value="business">Business</option>
+                                        <option value="education">Education</option>
+                                        <option value="medical">Medical</option>
+                                        <option value="home">Home Improvement</option>
+                                        <option value="personal">Personal</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="loan-calculator" id="loanCalculator">
+                                    <div class="calc-item">
+                                        <span>Interest Rate:</span>
+                                        <strong>5% p.a.</strong>
+                                    </div>
+                                    <div class="calc-item">
+                                        <span>Total Repayment:</span>
+                                        <strong id="totalRepayment">KES 0</strong>
+                                    </div>
+                                    <div class="calc-item">
+                                        <span>Monthly Payment:</span>
+                                        <strong id="monthlyPayment">KES 0</strong>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-full">Submit Application</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Loans Page -->
+                <div id="page-my-loans" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>My Loans</h3>
+                            <div class="filter-tabs">
+                                <button class="filter-tab active" data-filter="all">All</button>
+                                <button class="filter-tab" data-filter="pending">Pending</button>
+                                <button class="filter-tab" data-filter="active">Active</button>
+                                <button class="filter-tab" data-filter="completed">Completed</button>
+                                <button class="filter-tab" data-filter="rejected">Rejected</button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="loansList">
+                            <p class="text-muted">Loading loans...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Repayments Page -->
+                <div id="page-repayments" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Repayment History</h3>
+                        </div>
+                        <div class="card-body" id="repaymentsList">
+                            <p class="text-muted">Loading repayments...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Page -->
+                <div id="page-profile" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>My Profile</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="profileForm" onsubmit="updateProfile(event)">
+                                <div class="profile-avatar">
+                                    <img id="profileAvatar" src="" alt="Profile">
+                                    <button type="button" class="change-avatar-btn" onclick="document.getElementById('avatarUpload').click()">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                    <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
+                                </div>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Full Name</label>
+                                        <input type="text" id="profileFullName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Phone Number</label>
+                                        <input type="tel" id="profilePhone">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>ID Number</label>
+                                        <input type="text" id="profileIdNumber" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Date of Birth</label>
+                                        <input type="date" id="profileDob">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Gender</label>
+                                        <select id="profileGender">
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Employment Status</label>
+                                        <select id="profileEmploymentStatus">
+                                            <option value="employed">Employed</option>
+                                            <option value="self-employed">Self-Employed</option>
+                                            <option value="business">Business Owner</option>
+                                            <option value="student">Student</option>
+                                            <option value="unemployed">Unemployed</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Monthly Income (KES)</label>
+                                        <input type="number" id="profileMonthlyIncome">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Address</label>
+                                        <input type="text" id="profileAddress">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Profile</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </main>
+    </div>
 
-    <!-- Edit Profile Modal -->
-    <div id="editProfileModal" class="modal">
+    <!-- Loan Confirmation Modal -->
+    <div id="loanConfirmationModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeEditProfile()">&times;</span>
-            <h2>Edit Profile</h2>
-            <form id="editProfileForm" onsubmit="updateProfile(event)">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" id="editFullName" required>
+            <span class="close" onclick="closeModal('loanConfirmationModal')">&times;</span>
+            <h2>Loan Application Submitted!</h2>
+            <div class="confirmation-details">
+                <p>Your loan application has been submitted successfully.</p>
+                <div class="loan-summary">
+                    <div><span>Amount:</span> <strong id="confAmount">KES 0</strong></div>
+                    <div><span>Term:</span> <strong id="confTerm">0 Months</strong></div>
+                    <div><span>Monthly Payment:</span> <strong id="confMonthly">KES 0</strong></div>
+                    <div><span>Total Repayment:</span> <strong id="confTotal">KES 0</strong></div>
                 </div>
-                <div class="form-group">
-                    <label>Phone Number</label>
-                    <input type="tel" id="editPhone" required>
-                </div>
-                <div class="form-group">
-                    <label>Occupation</label>
-                    <input type="text" id="editOccupation">
-                </div>
-                <div class="form-group">
-                    <label>Monthly Income (KES)</label>
-                    <input type="number" id="editMonthlyIncome">
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Update Profile</button>
-            </form>
+                <p class="text-muted">You will receive a notification once your loan is approved.</p>
+            </div>
+            <button class="btn btn-primary" onclick="closeModal('loanConfirmationModal')">OK</button>
         </div>
     </div>
 
     <script src="js/supabase-config.js"></script>
-    <script src="js/auth.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>
