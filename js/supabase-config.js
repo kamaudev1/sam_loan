@@ -5,83 +5,12 @@ const SUPABASE_URL = 'https://dytbmobtxflxnfqkddrk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5dGJtb2J0eGZseG5mcWtkZHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5MzI4MjEsImV4cCI6MjEwMDUwODgyMX0.iFwsE4a8pM_xHP37eDogTjVWkzi7NwIkzG1m8UkpCfQ';
 
 
-// Initialize Supabase client - check if already exists
+// Initialize Supabase client only if not already defined
 if (typeof window.supabase === 'undefined') {
     window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-// Use the existing instance
-const supabaseClient = window.supabase;
-
-// Check if user is logged in
-async function checkAuth() {
-    try {
-        const { data: { user }, error } = await supabaseClient.auth.getUser();
-        
-        if (error) throw error;
-        
-        if (user) {
-            // User is logged in
-            const dashboardLink = document.getElementById('dashboardLink');
-            const adminLink = document.getElementById('adminLink');
-            const authBtn = document.getElementById('authBtn');
-            
-            if (dashboardLink) dashboardLink.style.display = 'inline';
-            
-            // Check if user is admin
-            try {
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
-                    
-                if (profile && profile.role === 'admin') {
-                    if (adminLink) adminLink.style.display = 'inline';
-                }
-            } catch (error) {
-                console.error('Error fetching profile:', error);
-            }
-            
-            if (authBtn) {
-                authBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-                authBtn.onclick = handleLogout;
-            }
-            
-            return user;
-        } else {
-            // User is not logged in
-            const dashboardLink = document.getElementById('dashboardLink');
-            const adminLink = document.getElementById('adminLink');
-            const authBtn = document.getElementById('authBtn');
-            
-            if (dashboardLink) dashboardLink.style.display = 'none';
-            if (adminLink) adminLink.style.display = 'none';
-            
-            return null;
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        return null;
-    }
-}
-
-// Handle logout
-async function handleLogout() {
-    try {
-        const { error } = await supabaseClient.auth.signOut();
-        if (error) throw error;
-        showNotification('Logged out successfully', 'success');
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1000);
-    } catch (error) {
-        console.error('Logout error:', error);
-        showNotification('Error logging out', 'error');
-    }
-}
-
-// Show notification
+// Show notification function (needs to be available globally)
 function showNotification(message, type = 'info') {
     // Remove existing notifications
     const existingNotifications = document.querySelectorAll('.notification');
@@ -125,15 +54,8 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Initialize auth check on page load
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', checkAuth);
-} else {
-    checkAuth();
-}
-
 // Make functions globally available
-window.supabase = supabaseClient;
-window.checkAuth = checkAuth;
-window.handleLogout = handleLogout;
 window.showNotification = showNotification;
+window.supabase = window.supabase;
+
+console.log('Supabase initialized:', window.supabase ? 'Yes' : 'No');
