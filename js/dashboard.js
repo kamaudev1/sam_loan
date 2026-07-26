@@ -1,6 +1,8 @@
 // Dashboard JavaScript
 let currentUser = null;
 let currentPage = 'overview';
+let userProfile = null;
+let isAdmin = false;
 
 // ============================================
 // INITIALIZATION
@@ -19,8 +21,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     currentUser = user;
     console.log('👤 User authenticated:', user.email);
     
-    // Load user profile
+    // Load user profile and check admin status
     await loadUserProfile();
+    
+    // Check if user is admin
+    await checkAdminStatus();
     
     // Load dashboard data
     await loadDashboardData();
@@ -30,6 +35,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Setup loan calculator
     setupLoanCalculator();
+    
+    // Update UI based on user role
+    updateUIForRole();
 });
 
 // ============================================
@@ -46,14 +54,42 @@ async function loadUserProfile() {
         
         if (error) throw error;
         
-        // Update UI
+        userProfile = profile;
+        
+        // Update sidebar user info
         document.getElementById('userName').textContent = profile.full_name || 'User';
         document.getElementById('userEmail').textContent = currentUser.email;
+        document.getElementById('topBarUserName').textContent = profile.full_name || 'User';
         
-        // Store profile for later use
-        window.userProfile = profile;
+        // Update role badge
+        const roleBadge = document.getElementById('userRoleBadge');
+        if (profile.role === 'admin') {
+            roleBadge.textContent = 'Admin';
+            roleBadge.className = 'user-role-badge admin';
+        } else {
+            roleBadge.textContent = 'User';
+            roleBadge.className = 'user-role-badge user';
+        }
         
-        // Update profile form if on profile page
+        // Update profile picture
+        if (profile.avatar_url) {
+            // Update sidebar avatar
+            const avatarImg = document.getElementById('userAvatarImg');
+            avatarImg.src = profile.avatar_url;
+            avatarImg.style.display = 'block';
+            document.getElementById('userAvatarIcon').style.display = 'none';
+            
+            // Update top bar avatar
+            const topBarAvatar = document.getElementById('topBarAvatar');
+            topBarAvatar.src = profile.avatar_url;
+            topBarAvatar.style.display = 'block';
+            document.getElementById('topBarAvatarIcon').style.display = 'none';
+            
+            // Update profile page avatar preview
+            document.getElementById('profileAvatarPreview').src = profile.avatar_url;
+        }
+        
+        // Update profile form
         if (document.getElementById('profileFullName')) {
             document.getElementById('profileFullName').value = profile.full_name || '';
             document.getElementById('profilePhone').value = profile.phone || '';
@@ -65,16 +101,93 @@ async function loadUserProfile() {
             document.getElementById('profileAddress').value = profile.address || '';
         }
         
-        // Load avatar
-        if (profile.avatar_url) {
-            document.getElementById('profileAvatar').src = profile.avatar_url;
-        }
-        
         console.log('✅ Profile loaded');
         
     } catch (error) {
         console.error('❌ Error loading profile:', error);
         showNotification('Error loading profile', 'error');
+    }
+}
+
+// ============================================
+// ADMIN STATUS CHECK
+// ============================================
+
+async function checkAdminStatus() {
+    try {
+        if (!userProfile) {
+            await loadUserProfile();
+        }
+        
+        isAdmin = userProfile && userProfile.role === 'admin';
+        console.log(`🔐 Admin status: ${isAdmin ? '✅ Yes' : '❌ No'}`);
+        
+        return isAdmin;
+        
+    } catch (error) {
+        console.error('❌ Error checking admin status:', error);
+        isAdmin = false;
+        return false;
+    }
+}
+
+// ============================================
+// UPDATE UI FOR ROLE
+// ============================================
+
+function updateUIForRole() {
+    const adminNavLink = document.getElementById('adminNavLink');
+    const roleBadge = document.getElementById('userRoleBadge');
+    
+    if (isAdmin) {
+        // Show admin nav link
+        adminNavLink.style.display = 'flex';
+        
+        // Update role badge
+        roleBadge.textContent = 'Admin';
+        roleBadge.className = 'user-role-badge admin';
+        
+        // Load pending count for admin badge
+        loadAdminPendingCount();
+        
+        console.log('👑 Admin UI enabled');
+    } else {
+        // Hide admin nav link
+        adminNavLink.style.display = 'none';
+        
+        // Update role badge
+        roleBadge.textContent = 'User';
+        roleBadge.className = 'user-role-badge user';
+        
+        console.log('👤 User UI enabled');
+    }
+}
+
+// ============================================
+// ADMIN PENDING COUNT
+// ============================================
+
+async function loadAdminPendingCount() {
+    if (!isAdmin) return;
+    
+    try {
+        const { count, error } = await window.supabase
+            .from('loans')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        
+        if (error) throw error;
+        
+        const badge = document.getElementById('adminPendingBadge');
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading pending count:', error);
     }
 }
 
@@ -120,33 +233,6 @@ async function loadDashboardData() {
                     <span class="status-badge status-${loan.status}">${loan.status}</span>
                 </div>
             `).join('');
-            
-            // Add styles for loan items
-            const style = document.createElement('style');
-            style.textContent = `
-                .loan-item {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 0.75rem 0;
-                    border-bottom: 1px solid #f0f0f0;
-                }
-                .loan-item:last-child {
-                    border-bottom: none;
-                }
-                .loan-info {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .loan-amount {
-                    font-weight: 600;
-                }
-                .loan-date {
-                    font-size: 0.75rem;
-                    color: #999;
-                }
-            `;
-            document.head.appendChild(style);
         } else {
             recentLoansContainer.innerHTML = '<p class="text-muted">No loans yet. Apply for your first loan!</p>';
         }
@@ -173,6 +259,10 @@ function setupNavigation() {
             e.preventDefault();
             const page = this.dataset.page;
             if (page) {
+                if (page === 'admin' && !isAdmin) {
+                    showNotification('Access denied. Admin privileges required.', 'error');
+                    return;
+                }
                 navigateTo(page);
             }
         });
@@ -189,6 +279,16 @@ function setupNavigation() {
 }
 
 function navigateTo(page) {
+    // Handle admin page navigation
+    if (page === 'admin') {
+        if (!isAdmin) {
+            showNotification('Access denied. Admin privileges required.', 'error');
+            return;
+        }
+        window.location.href = 'admin.html';
+        return;
+    }
+    
     // Update sidebar
     document.querySelectorAll('.sidebar-nav a').forEach(link => {
         link.classList.toggle('active', link.dataset.page === page);
@@ -225,19 +325,25 @@ function navigateTo(page) {
 }
 
 // ============================================
-// MY LOANS
+// MY LOANS (with filter)
 // ============================================
 
-async function loadMyLoans() {
+async function loadMyLoans(filter = 'all') {
     const container = document.getElementById('loansList');
     container.innerHTML = '<p class="text-muted">Loading loans...</p>';
     
     try {
-        const { data: loans, error } = await window.supabase
+        let query = window.supabase
             .from('loans')
             .select('*')
             .eq('user_id', currentUser.id)
             .order('application_date', { ascending: false });
+        
+        if (filter !== 'all') {
+            query = query.eq('status', filter);
+        }
+        
+        const { data: loans, error } = await query;
         
         if (error) throw error;
         
@@ -245,7 +351,7 @@ async function loadMyLoans() {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-file-invoice" style="font-size:3rem;color:#ccc;"></i>
-                    <p>You haven't applied for any loans yet.</p>
+                    <p>${filter === 'all' ? "You haven't applied for any loans yet." : `No ${filter} loans found.`}</p>
                     <button class="btn btn-primary" onclick="navigateTo('apply-loan')">Apply Now</button>
                 </div>
             `;
@@ -282,50 +388,6 @@ async function loadMyLoans() {
             </div>
         `).join('');
         
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .loan-card {
-                background: #f8f9fa;
-                border-radius: 8px;
-                padding: 1rem;
-                margin-bottom: 1rem;
-            }
-            .loan-card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 0.75rem;
-            }
-            .loan-amount-large {
-                font-size: 1.25rem;
-                font-weight: 700;
-                margin-right: 0.75rem;
-            }
-            .loan-card-body {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 0.5rem;
-            }
-            .loan-detail {
-                display: flex;
-                justify-content: space-between;
-                font-size: 0.875rem;
-            }
-            .loan-detail span {
-                color: #666;
-            }
-            .empty-state {
-                text-align: center;
-                padding: 2rem;
-            }
-            .empty-state p {
-                margin: 1rem 0;
-                color: #666;
-            }
-        `;
-        document.head.appendChild(style);
-        
         // Store loans for filtering
         window.allLoans = loans;
         
@@ -336,19 +398,7 @@ async function loadMyLoans() {
 }
 
 function filterLoans(filter) {
-    if (!window.allLoans) return;
-    
-    const container = document.getElementById('loansList');
-    let filteredLoans = window.allLoans;
-    
-    if (filter !== 'all') {
-        filteredLoans = window.allLoans.filter(l => l.status === filter);
-    }
-    
-    // Re-render with filtered loans
-    // (Reuse the rendering logic from loadMyLoans)
-    // For simplicity, we'll reload the page with filter
-    loadMyLoans();
+    loadMyLoans(filter);
 }
 
 // ============================================
@@ -385,38 +435,6 @@ async function loadRepayments() {
                 </div>
             </div>
         `).join('');
-        
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .repayment-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.75rem 0;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            .repayment-item:last-child {
-                border-bottom: none;
-            }
-            .repayment-info {
-                display: flex;
-                flex-direction: column;
-            }
-            .repayment-amount {
-                font-weight: 600;
-            }
-            .repayment-date {
-                font-size: 0.75rem;
-                color: #999;
-            }
-            .repayment-method {
-                font-size: 0.75rem;
-                color: #666;
-                margin-left: 0.5rem;
-            }
-        `;
-        document.head.appendChild(style);
         
     } catch (error) {
         console.error('❌ Error loading repayments:', error);
@@ -549,6 +567,7 @@ async function updateProfile(event) {
         
         // Update sidebar name
         document.getElementById('userName').textContent = profileData.full_name;
+        document.getElementById('topBarUserName').textContent = profileData.full_name;
         
     } catch (error) {
         console.error('❌ Error updating profile:', error);
@@ -591,7 +610,15 @@ async function uploadAvatar(event) {
         
         if (updateError) throw updateError;
         
-        document.getElementById('profileAvatar').src = publicUrl;
+        // Update all avatar displays
+        document.getElementById('profileAvatarPreview').src = publicUrl;
+        document.getElementById('userAvatarImg').src = publicUrl;
+        document.getElementById('userAvatarImg').style.display = 'block';
+        document.getElementById('userAvatarIcon').style.display = 'none';
+        document.getElementById('topBarAvatar').src = publicUrl;
+        document.getElementById('topBarAvatar').style.display = 'block';
+        document.getElementById('topBarAvatarIcon').style.display = 'none';
+        
         showNotification('Avatar updated successfully!', 'success');
         
     } catch (error) {
@@ -615,8 +642,6 @@ async function showNotifications() {
         
         if (error) throw error;
         
-        // Show notifications in a modal or dropdown
-        // For simplicity, we'll just show a notification
         if (notifications.length > 0) {
             const unread = notifications.filter(n => !n.is_read).length;
             showNotification(`You have ${unread} unread notifications`, 'info');
@@ -639,6 +664,45 @@ async function showNotifications() {
 }
 
 // ============================================
+// LOGOUT
+// ============================================
+
+function handleLogout() {
+    // Show logout confirmation modal
+    document.getElementById('logoutModal').classList.add('show');
+}
+
+async function confirmLogout() {
+    try {
+        // Close modal
+        closeModal('logoutModal');
+        
+        // Show loading notification
+        showNotification('Logging out...', 'info');
+        
+        // Sign out from Supabase
+        const { error } = await window.supabase.auth.signOut();
+        if (error) throw error;
+        
+        // Clear local storage
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('loginLockout');
+        
+        // Show success message
+        showNotification('✅ Logged out successfully', 'success');
+        
+        // Redirect to login page after delay
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Logout error:', error);
+        showNotification('Error logging out. Please try again.', 'error');
+    }
+}
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 
@@ -652,11 +716,160 @@ function closeModal(id) {
 
 function generateReport(type) {
     showNotification(`Generating ${type} report...`, 'info');
-    // Implement report generation logic
     setTimeout(() => {
         showNotification(`${type} report ready for download`, 'success');
     }, 2000);
 }
+
+// ============================================
+// ADDITIONAL CSS STYLES
+// ============================================
+
+// Add styles dynamically
+const additionalStyles = `
+    .user-role-badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+    .user-role-badge.admin {
+        background: #ff6f00;
+        color: white;
+    }
+    .user-role-badge.user {
+        background: #e0e0e0;
+        color: #666;
+    }
+    
+    .top-bar-user {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        background: #f5f7fa;
+    }
+    .top-bar-user img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .top-bar-user i {
+        font-size: 1.5rem;
+        color: #666;
+    }
+    .top-bar-user span {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+    }
+    .empty-state p {
+        margin: 1rem 0;
+        color: #666;
+    }
+    
+    .loan-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .loan-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .loan-amount-large {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-right: 0.75rem;
+    }
+    .loan-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .loan-detail {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.875rem;
+    }
+    .loan-detail span {
+        color: #666;
+    }
+    
+    .repayment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .repayment-item:last-child {
+        border-bottom: none;
+    }
+    .repayment-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .repayment-amount {
+        font-weight: 600;
+    }
+    .repayment-date {
+        font-size: 0.75rem;
+        color: #999;
+    }
+    .repayment-method {
+        font-size: 0.75rem;
+        color: #666;
+        margin-left: 0.5rem;
+    }
+    
+    .loan-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .loan-item:last-child {
+        border-bottom: none;
+    }
+    .loan-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .loan-amount {
+        font-weight: 600;
+    }
+    .loan-date {
+        font-size: 0.75rem;
+        color: #999;
+    }
+    
+    .btn-danger {
+        background: #f44336;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #d32f2f;
+    }
+`;
+
+// Inject styles
+const styleSheet = document.createElement("style");
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
 
 // ============================================
 // EXPOSE GLOBALLY
@@ -671,5 +884,7 @@ window.toggleSidebar = toggleSidebar;
 window.closeModal = closeModal;
 window.generateReport = generateReport;
 window.filterLoans = filterLoans;
+window.handleLogout = handleLogout;
+window.confirmLogout = confirmLogout;
 
 console.log('✅ dashboard.js loaded successfully');
