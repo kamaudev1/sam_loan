@@ -1,4 +1,4 @@
-// js/auth.js
+// js/auth.js - Complete Working Version
 let authCurrentUser = null;
 let profilePictureFile = null;
 let idDocumentFile = null;
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPasswordValidation();
 });
 
-// Navbar scroll effect
+// ============ NAVBAR SCROLL EFFECT ============
 function setupNavbarScroll() {
     window.addEventListener('scroll', () => {
         const navbar = document.getElementById('mainNav');
@@ -25,7 +25,7 @@ function setupNavbarScroll() {
     });
 }
 
-// Password validation
+// ============ PASSWORD VALIDATION ============
 function setupPasswordValidation() {
     const password = document.getElementById('password');
     const confirmPassword = document.getElementById('confirmPassword');
@@ -41,6 +41,7 @@ function setupPasswordValidation() {
     }
 }
 
+// ============ AUTH STATE CHECK ============
 async function checkAuthState() {
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -94,6 +95,7 @@ async function checkAuthState() {
     }
 }
 
+// ============ AUTH MODAL FUNCTIONS ============
 function showAuthModal(mode) {
     currentAuthMode = mode;
     const modal = document.getElementById('authModal');
@@ -116,6 +118,7 @@ function showAuthModal(mode) {
         if (switchText) {
             switchText.innerHTML = 'Already have an account? <a href="#" onclick="switchAuthMode(\'login\'); return false;">Sign In</a>';
         }
+        // Reset form
         const form = document.getElementById('authForm');
         if (form) form.reset();
         const profilePreview = document.getElementById('profilePreview');
@@ -149,6 +152,7 @@ function switchAuthMode(mode) {
     showAuthModal(mode);
 }
 
+// ============ IMAGE PREVIEW ============
 function previewImage(input, previewId) {
     const preview = document.getElementById(previewId);
     if (input.files && input.files[0] && preview) {
@@ -167,6 +171,7 @@ function previewImage(input, previewId) {
     }
 }
 
+// ============ HANDLE AUTH SUBMIT ============
 async function handleAuthSubmit(event) {
     event.preventDefault();
     const submitBtn = document.getElementById('authSubmitBtn');
@@ -194,6 +199,7 @@ async function handleAuthSubmit(event) {
     }
 }
 
+// ============ REGISTRATION ============
 async function handleRegistration() {
     const fullName = document.getElementById('fullName')?.value?.trim();
     const idNumber = document.getElementById('idNumber')?.value?.trim();
@@ -257,7 +263,7 @@ async function handleRegistration() {
         if (profilePictureFile) {
             try {
                 const fileExt = profilePictureFile.name.split('.').pop();
-                const fileName = `${data.user.id}/profile.${fileExt}`;
+                const fileName = `${data.user.id}/profile_${Date.now()}.${fileExt}`;
                 const { error: uploadError } = await supabaseClient.storage
                     .from('profiles')
                     .upload(fileName, profilePictureFile);
@@ -278,7 +284,7 @@ async function handleRegistration() {
         if (idDocument && idDocument.files && idDocument.files[0]) {
             try {
                 const fileExt = idDocument.files[0].name.split('.').pop();
-                const fileName = `${data.user.id}/id.${fileExt}`;
+                const fileName = `${data.user.id}/id_${Date.now()}.${fileExt}`;
                 const { error: uploadError } = await supabaseClient.storage
                     .from('kyc')
                     .upload(fileName, idDocument.files[0]);
@@ -325,21 +331,7 @@ async function handleRegistration() {
         
         if (userError) {
             console.error('Error saving user:', userError);
-            
-            // If it's a date error, try without date_of_birth
-            if (userError.message && userError.message.includes('date')) {
-                delete userData.date_of_birth;
-                const { error: retryError } = await supabaseClient
-                    .from('users')
-                    .insert([userData]);
-                
-                if (retryError) {
-                    console.error('Retry error:', retryError);
-                    throw new Error('Error saving user data. Please try again.');
-                }
-            } else {
-                throw new Error('Error saving user data. Please try again.');
-            }
+            throw new Error('Error saving user data. Please try again.');
         }
         
         showToast('Registration successful! Please verify your email.', 'success');
@@ -352,6 +344,7 @@ async function handleRegistration() {
     }
 }
 
+// ============ LOGIN ============
 async function handleLogin() {
     const email = document.getElementById('loginEmail')?.value?.trim();
     const password = document.getElementById('loginPassword')?.value;
@@ -378,6 +371,7 @@ async function handleLogin() {
     }
 }
 
+// ============ LOGOUT ============
 async function handleLogout() {
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
@@ -389,6 +383,7 @@ async function handleLogout() {
     window.location.href = 'index.html';
 }
 
+// ============ TOAST NOTIFICATIONS ============
 function showToast(message, type = 'info') {
     const container = document.querySelector('.toast-container') || createToastContainer();
     const toast = document.createElement('div');
@@ -410,6 +405,7 @@ function createToastContainer() {
     return container;
 }
 
+// ============ TERMS AND PRIVACY ============
 function showTerms() {
     const modal = document.getElementById('termsModal');
     if (modal) modal.style.display = 'flex';
@@ -424,12 +420,13 @@ function closeTermsModal() {
     if (modal) modal.style.display = 'none';
 }
 
+// ============ MOBILE MENU ============
 function toggleMobileMenu() {
     const navLinks = document.getElementById('navLinks');
     if (navLinks) navLinks.classList.toggle('active');
 }
 
-// Close modals when clicking outside
+// ============ CLOSE MODALS ON OUTSIDE CLICK ============
 window.onclick = function(event) {
     const authModal = document.getElementById('authModal');
     const termsModal = document.getElementById('termsModal');
@@ -441,7 +438,7 @@ window.onclick = function(event) {
     }
 };
 
-// Make functions globally accessible
+// ============ EXPOSE FUNCTIONS GLOBALLY ============
 window.showAuthModal = showAuthModal;
 window.closeAuthModal = closeAuthModal;
 window.switchAuthMode = switchAuthMode;
@@ -453,3 +450,5 @@ window.showTerms = showTerms;
 window.showPrivacy = showPrivacy;
 window.closeTermsModal = closeTermsModal;
 window.toggleMobileMenu = toggleMobileMenu;
+
+console.log('Auth.js loaded successfully!');
