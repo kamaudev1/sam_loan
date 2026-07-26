@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - SAM Loans</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="auth-page">
+        <!-- Header -->
+        <nav class="auth-nav">
+            <div class="container">
+                <a href="index.html" class="auth-brand">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>SAM Loans</span>
+                </a>
+                <p>Already have an account? <a href="login.html">Sign In</a></p>
+            </div>
+        </nav>
+
+        <!-- Registration Form -->
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h1>Create Account</h1>
+                    <p>Start your journey to financial freedom</p>
+                    <div class="progress-bar">
+                        <div class="progress-step active">1</div>
+                        <div class="progress-line"></div>
+                        <div class="progress-step">2</div>
+                        <div class="progress-line"></div>
+                        <div class="progress-step">3</div>
+                    </div>
+                </div>
+
+                <form id="registrationForm" onsubmit="handleRegistration(event)" enctype="multipart/form-data" novalidate>
+                    <!-- Step 1: Personal Information -->
+                    <div class="form-step" id="step1">
+                        <h3>Personal Information</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label><i class="fas fa-user"></i> Full Name *</label>
+                                <input type="text" id="fullName" placeholder="Enter your full name" required>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-id-card"></i> ID Number *</label>
+                                <input type="text" id="idNumber" placeholder="e.g., 12345678" required pattern="[0-9]{5,8}">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-envelope"></i> Email Address *</label>
+                                <input type="email" id="email" placeholder="Enter your email" required>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-phone"></i> Phone Number *</label>
+                                <input type="tel" id="phone" placeholder="e.g., 0712345678" required pattern="[0-9]{10,12}">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-calendar"></i> Date of Birth *</label>
+                                <input type="date" id="dateOfBirth" required max="2006-01-01">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-venus-mars"></i> Gender *</label>
+                                <select id="gender" required>
+                                    <option value="">Select gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-navigation">
+                            <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next Step <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Employment & Financial Info -->
+                    <div class="form-step" id="step2" style="display:none;">
+                        <h3>Employment & Financial Information</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label><i class="fas fa-briefcase"></i> Employment Status *</label>
+                                <select id="employmentStatus" required>
+                                    <option value="">Select status</option>
+                                    <option value="employed">Employed</option>
+                                    <option value="self-employed">Self-Employed</option>
+                                    <option value="business">Business Owner</option>
+                                    <option value="student">Student</option>
+                                    <option value="unemployed">Unemployed</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-building"></i> Employer/Business Name</label>
+                                <input type="text" id="employer" placeholder="Your employer or business name">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-money-bill-wave"></i> Monthly Income (KES) *</label>
+                                <input type="number" id="monthlyIncome" placeholder="e.g., 50000" required min="0" step="1000">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-credit-card"></i> Source of Income *</label>
+                                <select id="incomeSource" required>
+                                    <option value="">Select source</option>
+                                    <option value="salary">Salary</option>
+                                    <option value="business">Business</option>
+                                    <option value="investment">Investment</option>
+                                    <option value="remittance">Remittance</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label><i class="fas fa-home"></i> Physical Address *</label>
+                                <input type="text" id="address" placeholder="Enter your physical address" required>
+                            </div>
+                        </div>
+                        <div class="form-navigation">
+                            <button type="button" class="btn btn-secondary" onclick="previousStep(1)"><i class="fas fa-arrow-left"></i> Previous</button>
+                            <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next Step <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Account Setup & Documents -->
+                    <div class="form-step" id="step3" style="display:none;">
+                        <h3>Account Setup & Verification</h3>
+                        
+                        <!-- Password Section -->
+                        <div class="form-section">
+                            <h4><i class="fas fa-lock"></i> Security</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label><i class="fas fa-key"></i> Password *</label>
+                                    <input type="password" id="password" placeholder="Create a strong password" required minlength="8">
+                                    <div class="password-strength">
+                                        <div class="strength-bar"></div>
+                                        <small class="strength-text">Password must be at least 8 characters</small>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-check-circle"></i> Confirm Password *</label>
+                                    <input type="password" id="confirmPassword" placeholder="Confirm your password" required minlength="8">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document Uploads -->
+                        <div class="form-section">
+                            <h4><i class="fas fa-file-upload"></i> Document Upload</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label><i class="fas fa-camera"></i> Profile Picture</label>
+                                    <div class="file-upload">
+                                        <input type="file" id="profilePicture" accept="image/*" onchange="previewImage(this, 'profilePreview')">
+                                        <div class="file-upload-label">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <span>Click to upload profile picture</span>
+                                        </div>
+                                    </div>
+                                    <img id="profilePreview" class="image-preview" style="display:none;" alt="Profile preview">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-id-card"></i> ID Document (ID/Passport) *</label>
+                                    <div class="file-upload">
+                                        <input type="file" id="idDocument" accept="image/*" onchange="previewImage(this, 'idPreview')" required>
+                                        <div class="file-upload-label">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <span>Click to upload ID document</span>
+                                        </div>
+                                    </div>
+                                    <img id="idPreview" class="image-preview" style="display:none;" alt="ID preview">
+                                    <small>Upload a clear photo of your national ID or passport</small>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-file-invoice"></i> Proof of Income</label>
+                                    <div class="file-upload">
+                                        <input type="file" id="proofOfIncome" accept=".pdf,.jpg,.png" onchange="previewFile(this, 'incomePreview')">
+                                        <div class="file-upload-label">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <span>Click to upload proof of income</span>
+                                        </div>
+                                    </div>
+                                    <div id="incomePreview" class="file-preview" style="display:none;"></div>
+                                    <small>Upload bank statements, payslips, or business documents</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terms and Conditions -->
+                        <div class="form-section">
+                            <div class="form-group terms">
+                                <label>
+                                    <input type="checkbox" id="termsAccepted" required>
+                                    I agree to the <a href="#" onclick="showTerms(); return false;">Terms and Conditions</a> and <a href="#" onclick="showPrivacy(); return false;">Privacy Policy</a>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="marketingConsent">
+                                    I agree to receive marketing communications and loan updates
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-navigation">
+                            <button type="button" class="btn btn-secondary" onclick="previousStep(2)"><i class="fas fa-arrow-left"></i> Previous</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-spinner fa-spin" style="display:none;"></i>
+                                <span id="registerBtnText">Create Account</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Terms Modal -->
+        <div id="termsModal" class="modal">
+            <div class="modal-content terms-content">
+                <span class="close" onclick="closeTermsModal()">&times;</span>
+                <h2>Terms and Conditions</h2>
+                <div class="terms-text">
+                    <h3>1. Loan Agreement</h3>
+                    <p>By accepting these terms, you agree to repay the loan amount plus interest as per the agreed schedule.</p>
+                    <h3>2. Interest Rates</h3>
+                    <p>Interest rates are fixed at 5% per annum for all soft loans.</p>
+                    <h3>3. Repayment</h3>
+                    <p>Repayments must be made monthly via M-Pesa or bank transfer.</p>
+                    <h3>4. Default</h3>
+                    <p>Failure to repay may result in additional charges and legal action.</p>
+                    <h3>5. Data Privacy</h3>
+                    <p>Your data is protected and will only be used for loan processing purposes.</p>
+                </div>
+                <button class="btn btn-primary" onclick="closeTermsModal()">I Understand</button>
+            </div>
+        </div>
+
+        <!-- Privacy Modal -->
+        <div id="privacyModal" class="modal">
+            <div class="modal-content terms-content">
+                <span class="close" onclick="closePrivacyModal()">&times;</span>
+                <h2>Privacy Policy</h2>
+                <div class="terms-text">
+                    <h3>Information Collection</h3>
+                    <p>We collect personal information to process loan applications and provide services.</p>
+                    <h3>Data Protection</h3>
+                    <p>Your data is encrypted and stored securely with access controls.</p>
+                    <h3>Data Sharing</h3>
+                    <p>We do not share your data with third parties without your consent.</p>
+                </div>
+                <button class="btn btn-primary" onclick="closePrivacyModal()">I Understand</button>
+            </div>
+        </div>
+
+        <script src="js/supabase-config.js"></script>
+        <script src="js/registration.js"></script>
+    </div>
+</body>
+</html>
