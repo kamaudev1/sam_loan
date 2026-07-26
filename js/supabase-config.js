@@ -4,13 +4,25 @@
 const SUPABASE_URL = 'https://dytbmobtxflxnfqkddrk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5dGJtb2J0eGZseG5mcWtkZHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5MzI4MjEsImV4cCI6MjEwMDUwODgyMX0.iFwsE4a8pM_xHP37eDogTjVWkzi7NwIkzG1m8UkpCfQ';
 
+// Initialize Supabase client
+let supabaseClient;
 
-// Initialize Supabase client only if not already defined
-if (typeof window.supabase === 'undefined') {
-    window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+try {
+    // Check if supabase is available from CDN
+    if (typeof supabase !== 'undefined') {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('Supabase client initialized successfully');
+    } else {
+        console.error('Supabase library not loaded. Check CDN link.');
+    }
+} catch (error) {
+    console.error('Error initializing Supabase:', error);
 }
 
-// Show notification function (needs to be available globally)
+// Make supabase available globally
+window.supabase = supabaseClient;
+
+// Show notification function
 function showNotification(message, type = 'info') {
     // Remove existing notifications
     const existingNotifications = document.querySelectorAll('.notification');
@@ -54,8 +66,26 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
+// Check auth status
+async function checkAuth() {
+    if (!window.supabase) {
+        console.error('Supabase not initialized');
+        return null;
+    }
+    
+    try {
+        const { data: { user }, error } = await window.supabase.auth.getUser();
+        if (error) throw error;
+        return user;
+    } catch (error) {
+        console.error('Auth check error:', error);
+        return null;
+    }
+}
+
 // Make functions globally available
 window.showNotification = showNotification;
-window.supabase = window.supabase;
+window.checkAuth = checkAuth;
 
-console.log('Supabase initialized:', window.supabase ? 'Yes' : 'No');
+console.log('supabase-config.js loaded');
+console.log('window.supabase:', window.supabase ? 'Available' : 'Not available');
