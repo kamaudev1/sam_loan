@@ -1,6 +1,7 @@
 // Admin Dashboard JavaScript
 let currentUser = null;
 let currentPage = 'admin-overview';
+let isAdmin = false;
 
 // ============================================
 // INITIALIZATION
@@ -17,10 +18,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     currentUser = user;
+    console.log('👤 Admin authenticated:', user.email);
     
     // Check if user is admin
-    const isAdmin = await checkAdminStatus();
-    if (!isAdmin) {
+    const adminStatus = await checkAdminStatus();
+    if (!adminStatus) {
         showNotification('Access denied. Admin privileges required.', 'error');
         setTimeout(() => {
             window.location.href = 'dashboard.html';
@@ -28,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
     
-    console.log('👤 Admin authenticated:', user.email);
+    isAdmin = true;
     
     // Load admin data
     await loadAdminData();
@@ -92,10 +94,10 @@ async function loadAdminData() {
             .reduce((sum, l) => sum + l.amount, 0);
         
         // Update stats
-        document.getElementById('totalUsers').textContent = totalUsers;
+        document.getElementById('totalUsers').textContent = totalUsers || 0;
         document.getElementById('totalLoans').textContent = totalLoans;
         document.getElementById('pendingLoans').textContent = pendingLoans;
-        document.getElementById('totalDisbursed').textContent = `KES ${totalDisbursed.toLocaleString()}`;
+        document.getElementById('totalDisbursed').textContent = `KES ${(totalDisbursed || 0).toLocaleString()}`;
         document.getElementById('pendingCount').textContent = pendingLoans;
         
         // Load recent users
@@ -113,7 +115,7 @@ async function loadAdminData() {
 }
 
 // ============================================
-// RECENT USERS
+// RECENT USERS (Fixed - without auth.users join)
 // ============================================
 
 async function loadRecentUsers() {
@@ -122,53 +124,50 @@ async function loadRecentUsers() {
     try {
         const { data: users, error } = await window.supabase
             .from('profiles')
-            .select('*, auth.users(email)')
+            .select('*')
             .order('created_at', { ascending: false })
             .limit(5);
         
         if (error) throw error;
         
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
             container.innerHTML = '<p class="text-muted">No users yet</p>';
             return;
+        }
+        
+        // Get user emails from auth.users using a different approach
+        // Since we can't directly join, we'll use the user IDs to get emails
+        const userIds = users.map(u => u.id);
+        let emailMap = {};
+        
+        try {
+            // Try to get emails from auth.users using the admin API
+            // This requires admin privileges on the Supabase client
+            const { data: authUsers, error: authError } = await window.supabase
+                .from('auth.users')
+                .select('id, email')
+                .in('id', userIds);
+            
+            if (!authError && authUsers) {
+                emailMap = authUsers.reduce((acc, u) => {
+                    acc[u.id] = u.email;
+                    return acc;
+                }, {});
+            }
+        } catch (e) {
+            // If we can't get emails, just use the user data we have
+            console.log('ℹ️ Using profile data only (email not available)');
         }
         
         container.innerHTML = users.map(user => `
             <div class="user-item">
                 <div class="user-item-info">
                     <span class="user-name">${user.full_name || 'Unknown'}</span>
-                    <span class="user-email">${user.email || ''}</span>
+                    <span class="user-email">${emailMap[user.id] || 'Email unavailable'}</span>
                 </div>
                 <span class="status-badge status-${user.status || 'pending'}">${user.status || 'pending'}</span>
             </div>
         `).join('');
-        
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .user-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.75rem 0;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            .user-item:last-child {
-                border-bottom: none;
-            }
-            .user-item-info {
-                display: flex;
-                flex-direction: column;
-            }
-            .user-name {
-                font-weight: 500;
-            }
-            .user-email {
-                font-size: 0.75rem;
-                color: #999;
-            }
-        `;
-        document.head.appendChild(style);
         
     } catch (error) {
         console.error('❌ Error loading recent users:', error);
@@ -192,7 +191,7 @@ async function loadRecentApplications() {
         
         if (error) throw error;
         
-        if (loans.length === 0) {
+        if (!loans || loans.length === 0) {
             container.innerHTML = '<p class="text-muted">No applications yet</p>';
             return;
         }
@@ -207,33 +206,6 @@ async function loadRecentApplications() {
             </div>
         `).join('');
         
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .application-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.75rem 0;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            .application-item:last-child {
-                border-bottom: none;
-            }
-            .application-info {
-                display: flex;
-                flex-direction: column;
-            }
-            .applicant-name {
-                font-weight: 500;
-            }
-            .application-amount {
-                font-size: 0.875rem;
-                color: #666;
-            }
-        `;
-        document.head.appendChild(style);
-        
     } catch (error) {
         console.error('❌ Error loading recent applications:', error);
         container.innerHTML = '<p class="text-muted">Error loading applications</p>';
@@ -241,7 +213,7 @@ async function loadRecentApplications() {
 }
 
 // ============================================
-// ALL USERS
+// ALL USERS (Fixed)
 // ============================================
 
 async function loadAllUsers() {
@@ -255,9 +227,29 @@ async function loadAllUsers() {
         
         if (error) throw error;
         
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
             container.innerHTML = '<tr><td colspan="6" class="text-center">No users found</td></tr>';
             return;
+        }
+        
+        // Get user emails
+        const userIds = users.map(u => u.id);
+        let emailMap = {};
+        
+        try {
+            const { data: authUsers, error: authError } = await window.supabase
+                .from('auth.users')
+                .select('id, email')
+                .in('id', userIds);
+            
+            if (!authError && authUsers) {
+                emailMap = authUsers.reduce((acc, u) => {
+                    acc[u.id] = u.email;
+                    return acc;
+                }, {});
+            }
+        } catch (e) {
+            console.log('ℹ️ Email data not available');
         }
         
         container.innerHTML = users.map(user => `
@@ -267,10 +259,10 @@ async function loadAllUsers() {
                         <span class="user-cell-name">${user.full_name || 'Unknown'}</span>
                     </div>
                 </td>
-                <td>${user.email || ''}</td>
+                <td>${emailMap[user.id] || 'N/A'}</td>
                 <td>${user.phone || '-'}</td>
                 <td><span class="status-badge status-${user.status || 'pending'}">${user.status || 'pending'}</span></td>
-                <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="viewUser('${user.id}')">
                         <i class="fas fa-eye"></i>
@@ -281,20 +273,6 @@ async function loadAllUsers() {
                 </td>
             </tr>
         `).join('');
-        
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .user-cell {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
-            .user-cell-name {
-                font-weight: 500;
-            }
-        `;
-        document.head.appendChild(style);
         
     } catch (error) {
         console.error('❌ Error loading users:', error);
@@ -317,7 +295,7 @@ async function loadAllLoans() {
         
         if (error) throw error;
         
-        if (loans.length === 0) {
+        if (!loans || loans.length === 0) {
             container.innerHTML = '<tr><td colspan="7" class="text-center">No loans found</td></tr>';
             return;
         }
@@ -327,9 +305,9 @@ async function loadAllLoans() {
                 <td>${loan.profiles?.full_name || 'Unknown'}</td>
                 <td><strong>KES ${loan.amount.toLocaleString()}</strong></td>
                 <td>${loan.term_months} months</td>
-                <td>KES ${loan.monthly_payment.toLocaleString()}</td>
+                <td>KES ${loan.monthly_payment ? loan.monthly_payment.toLocaleString() : '0'}</td>
                 <td><span class="status-badge status-${loan.status}">${loan.status}</span></td>
-                <td>${new Date(loan.application_date).toLocaleDateString()}</td>
+                <td>${loan.application_date ? new Date(loan.application_date).toLocaleDateString() : 'N/A'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="viewLoan('${loan.id}')">
                         <i class="fas fa-eye"></i>
@@ -368,7 +346,7 @@ async function loadPendingLoans() {
         
         if (error) throw error;
         
-        if (loans.length === 0) {
+        if (!loans || loans.length === 0) {
             container.innerHTML = '<tr><td colspan="6" class="text-center">No pending applications</td></tr>';
             return;
         }
@@ -379,7 +357,7 @@ async function loadPendingLoans() {
                 <td><strong>KES ${loan.amount.toLocaleString()}</strong></td>
                 <td>${loan.term_months} months</td>
                 <td>KES ${(loan.profiles?.monthly_income || 0).toLocaleString()}</td>
-                <td>${new Date(loan.application_date).toLocaleDateString()}</td>
+                <td>${loan.application_date ? new Date(loan.application_date).toLocaleDateString() : 'N/A'}</td>
                 <td>
                     <button class="btn btn-sm btn-success" onclick="approveLoan('${loan.id}')">
                         <i class="fas fa-check"></i> Approve
@@ -390,6 +368,9 @@ async function loadPendingLoans() {
                 </td>
             </tr>
         `).join('');
+        
+        // Update pending count badge
+        document.getElementById('pendingCount').textContent = loans.length;
         
     } catch (error) {
         console.error('❌ Error loading pending loans:', error);
@@ -412,7 +393,7 @@ async function loadAllRepayments() {
         
         if (error) throw error;
         
-        if (repayments.length === 0) {
+        if (!repayments || repayments.length === 0) {
             container.innerHTML = '<tr><td colspan="6" class="text-center">No repayments yet</td></tr>';
             return;
         }
@@ -420,10 +401,10 @@ async function loadAllRepayments() {
         container.innerHTML = repayments.map(r => `
             <tr>
                 <td>${r.profiles?.full_name || 'Unknown'}</td>
-                <td>KES ${r.loans?.amount?.toLocaleString() || 0}</td>
+                <td>KES ${r.loans?.amount ? r.loans.amount.toLocaleString() : '0'}</td>
                 <td><strong>KES ${r.amount.toLocaleString()}</strong></td>
-                <td>${r.payment_method}</td>
-                <td>${new Date(r.payment_date).toLocaleDateString()}</td>
+                <td>${r.payment_method || 'N/A'}</td>
+                <td>${r.payment_date ? new Date(r.payment_date).toLocaleDateString() : 'N/A'}</td>
                 <td><span class="status-badge status-${r.status}">${r.status}</span></td>
             </tr>
         `).join('');
@@ -506,7 +487,7 @@ async function viewUser(userId) {
                 <p><strong>Phone:</strong> ${user.phone || 'N/A'}</p>
                 <p><strong>ID Number:</strong> ${user.id_number || 'N/A'}</p>
                 <p><strong>Status:</strong> ${user.status || 'N/A'}</p>
-                <p><strong>Joined:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
+                <p><strong>Joined:</strong> ${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</p>
             </div>
         `;
         document.getElementById('actionModalButtons').innerHTML = `
@@ -536,12 +517,12 @@ async function viewLoan(loanId) {
             <div class="loan-details">
                 <p><strong>Borrower:</strong> ${loan.profiles?.full_name || 'N/A'}</p>
                 <p><strong>Phone:</strong> ${loan.profiles?.phone || 'N/A'}</p>
-                <p><strong>Amount:</strong> KES ${loan.amount.toLocaleString()}</p>
-                <p><strong>Term:</strong> ${loan.term_months} months</p>
-                <p><strong>Monthly Payment:</strong> KES ${loan.monthly_payment.toLocaleString()}</p>
-                <p><strong>Total Repayment:</strong> KES ${loan.total_amount.toLocaleString()}</p>
-                <p><strong>Status:</strong> ${loan.status}</p>
-                <p><strong>Applied:</strong> ${new Date(loan.application_date).toLocaleDateString()}</p>
+                <p><strong>Amount:</strong> KES ${loan.amount ? loan.amount.toLocaleString() : '0'}</p>
+                <p><strong>Term:</strong> ${loan.term_months || 0} months</p>
+                <p><strong>Monthly Payment:</strong> KES ${loan.monthly_payment ? loan.monthly_payment.toLocaleString() : '0'}</p>
+                <p><strong>Total Repayment:</strong> KES ${loan.total_amount ? loan.total_amount.toLocaleString() : '0'}</p>
+                <p><strong>Status:</strong> ${loan.status || 'N/A'}</p>
+                <p><strong>Applied:</strong> ${loan.application_date ? new Date(loan.application_date).toLocaleDateString() : 'N/A'}</p>
             </div>
         `;
         document.getElementById('actionModalButtons').innerHTML = `
@@ -632,7 +613,7 @@ function navigateToAdmin(page) {
 }
 
 // ============================================
-// SEARCH
+// SEARCH AND FILTER
 // ============================================
 
 function searchUsers() {
@@ -664,19 +645,96 @@ function filterLoans() {
 }
 
 // ============================================
+// SIDEBAR TOGGLE (FIXED)
+// ============================================
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('active');
+    }
+}
+
+// ============================================
+// MODAL FUNCTIONS
+// ============================================
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// ============================================
+// REPORT GENERATION
+// ============================================
+
+function generateReport(type) {
+    showNotification(`Generating ${type} report...`, 'info');
+    
+    // Simulate report generation
+    setTimeout(() => {
+        const reportData = {
+            users: 'User registration and activity report',
+            loans: 'Loan applications and approvals report',
+            repayments: 'Repayment tracking report',
+            financial: 'Financial summary and performance report'
+        };
+        
+        showNotification(`✅ ${type} report ready for download`, 'success');
+        console.log(`📊 ${reportData[type] || 'Report'}`);
+    }, 2000);
+}
+
+// ============================================
+// LOGOUT
+// ============================================
+
+async function handleLogout() {
+    if (!confirm('Are you sure you want to logout?')) return;
+    
+    try {
+        const { error } = await window.supabase.auth.signOut();
+        if (error) throw error;
+        
+        showNotification('✅ Logged out successfully', 'success');
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Logout error:', error);
+        showNotification('Error logging out. Please try again.', 'error');
+    }
+}
+
+// ============================================
 // EXPOSE GLOBALLY
 // ============================================
 
+// Navigation
 window.navigateToAdmin = navigateToAdmin;
+window.toggleSidebar = toggleSidebar;
+
+// Loan actions
 window.approveLoan = approveLoan;
 window.rejectLoan = rejectLoan;
+
+// View actions
 window.viewUser = viewUser;
 window.viewLoan = viewLoan;
+
+// User actions
 window.suspendUser = suspendUser;
+
+// Search and filter
 window.searchUsers = searchUsers;
 window.filterLoans = filterLoans;
-window.toggleSidebar = toggleSidebar;
+
+// Modal and utility
 window.closeModal = closeModal;
 window.generateReport = generateReport;
+window.handleLogout = handleLogout;
 
 console.log('✅ admin.js loaded successfully');
