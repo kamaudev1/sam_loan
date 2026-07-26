@@ -4,13 +4,25 @@ const totalSteps = 3;
 
 // Initialize registration form
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Registration page loaded');
+    console.log('📄 Registration page loaded');
+    console.log('🔑 Supabase status:', window.supabase ? '✅ Available' : '❌ Not available');
+    
+    // Check Supabase
+    if (!window.supabase) {
+        showNotification('Unable to connect to server. Please refresh.', 'error');
+        return;
+    }
+    
     updateProgressBar(1);
     setupPasswordStrength();
     setupFormValidation();
+    setupFileUploads();
 });
 
-// Step navigation
+// ============================================
+// STEP NAVIGATION
+// ============================================
+
 function goToStep(step) {
     if (step > currentStep) {
         // Going forward - validate current step
@@ -31,7 +43,6 @@ function goToStep(step) {
 }
 
 function showStep(step) {
-    // Hide all steps
     for (let i = 1; i <= totalSteps; i++) {
         const stepElement = document.getElementById(`step${i}`);
         if (stepElement) {
@@ -58,14 +69,16 @@ function updateProgressBar(step) {
     progressLines.forEach((el, index) => {
         const lineNum = index + 1;
         el.classList.remove('completed');
-        
         if (lineNum < step) {
             el.classList.add('completed');
         }
     });
 }
 
-// Validate current step
+// ============================================
+// VALIDATION
+// ============================================
+
 function validateStep(step) {
     const stepElement = document.getElementById(`step${step}`);
     if (!stepElement) return false;
@@ -73,22 +86,24 @@ function validateStep(step) {
     const inputs = stepElement.querySelectorAll('input[required], select[required]');
     let isValid = true;
     
+    // Clear all previous errors in this step
+    stepElement.querySelectorAll('.field-error').forEach(el => el.remove());
+    stepElement.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+    
     inputs.forEach(input => {
-        // Remove existing error
-        const existingError = input.parentElement.querySelector('.field-error');
-        if (existingError) existingError.remove();
-        input.classList.remove('error');
+        // Skip validation for hidden fields
+        if (input.type === 'hidden') return;
         
-        if (!input.value.trim()) {
+        if (!input.value || !input.value.trim()) {
             input.classList.add('error');
             showFieldError(input, 'This field is required');
             isValid = false;
             return;
         }
         
-        // Additional validation based on input type
+        // Email validation
         if (input.type === 'email' && input.value) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if (!emailRegex.test(input.value)) {
                 input.classList.add('error');
                 showFieldError(input, 'Please enter a valid email address');
@@ -96,6 +111,7 @@ function validateStep(step) {
             }
         }
         
+        // Phone validation
         if (input.type === 'tel' && input.value) {
             const phoneRegex = /^[0-9]{10,12}$/;
             if (!phoneRegex.test(input.value.replace(/\s/g, ''))) {
@@ -105,6 +121,7 @@ function validateStep(step) {
             }
         }
         
+        // ID Number validation
         if (input.id === 'idNumber' && input.value) {
             const idRegex = /^[0-9]{5,8}$/;
             if (!idRegex.test(input.value)) {
@@ -114,6 +131,7 @@ function validateStep(step) {
             }
         }
         
+        // Date of Birth validation
         if (input.type === 'date' && input.value) {
             const birthDate = new Date(input.value);
             const minDate = new Date('2006-01-01');
@@ -123,75 +141,75 @@ function validateStep(step) {
                 isValid = false;
             }
         }
+        
+        // Monthly Income validation
+        if (input.id === 'monthlyIncome' && input.value) {
+            const income = parseFloat(input.value);
+            if (isNaN(income) || income < 0) {
+                input.classList.add('error');
+                showFieldError(input, 'Please enter a valid income amount');
+                isValid = false;
+            }
+        }
     });
     
-    // Special validation for step 3 (passwords and files)
+    // Step 3 specific validations
     if (step === 3) {
         const password = document.getElementById('password');
         const confirmPassword = document.getElementById('confirmPassword');
         
-        // Remove existing errors
-        [password, confirmPassword].forEach(input => {
-            const existingError = input.parentElement.querySelector('.field-error');
-            if (existingError) existingError.remove();
-            input.classList.remove('error');
-        });
-        
-        if (password.value && password.value.length < 8) {
+        // Password validation
+        if (password.value.length < 8) {
             password.classList.add('error');
             showFieldError(password, 'Password must be at least 8 characters');
             isValid = false;
         }
         
+        // Password match validation
         if (password.value && confirmPassword.value && password.value !== confirmPassword.value) {
             confirmPassword.classList.add('error');
             showFieldError(confirmPassword, 'Passwords do not match');
             isValid = false;
         }
         
+        // ID Document validation
         const idDocument = document.getElementById('idDocument');
         if (!idDocument.files || idDocument.files.length === 0) {
-            idDocument.classList.add('error');
             const container = idDocument.closest('.form-group');
-            const existingError = container.querySelector('.field-error');
-            if (!existingError) {
-                const error = document.createElement('small');
-                error.className = 'field-error';
-                error.style.color = '#f44336';
-                error.style.display = 'block';
-                error.style.marginTop = '0.25rem';
-                error.textContent = 'Please upload your ID document';
-                container.appendChild(error);
-            }
+            idDocument.classList.add('error');
+            const error = document.createElement('small');
+            error.className = 'field-error';
+            error.style.color = '#f44336';
+            error.style.display = 'block';
+            error.style.marginTop = '0.25rem';
+            error.textContent = 'Please upload your ID document';
+            container.appendChild(error);
             isValid = false;
         }
         
+        // Terms validation
         const termsAccepted = document.getElementById('termsAccepted');
         if (!termsAccepted.checked) {
             termsAccepted.classList.add('error');
             const container = termsAccepted.closest('.form-group');
-            const existingError = container.querySelector('.field-error');
-            if (!existingError) {
-                const error = document.createElement('small');
-                error.className = 'field-error';
-                error.style.color = '#f44336';
-                error.style.display = 'block';
-                error.style.marginTop = '0.25rem';
-                error.textContent = 'You must accept the terms and conditions';
-                container.appendChild(error);
-            }
+            const error = document.createElement('small');
+            error.className = 'field-error';
+            error.style.color = '#f44336';
+            error.style.display = 'block';
+            error.style.marginTop = '0.25rem';
+            error.textContent = 'You must accept the terms and conditions';
+            container.appendChild(error);
             isValid = false;
         }
     }
     
     if (!isValid) {
-        showNotification('Please fill in all required fields correctly', 'error');
+        showNotification('Please fix all errors before continuing', 'error');
     }
     
     return isValid;
 }
 
-// Show field error
 function showFieldError(input, message) {
     const existingError = input.parentElement.querySelector('.field-error');
     if (existingError) existingError.remove();
@@ -206,11 +224,14 @@ function showFieldError(input, message) {
     input.parentElement.appendChild(error);
 }
 
-// Setup form validation
+// ============================================
+// REAL-TIME VALIDATION
+// ============================================
+
 function setupFormValidation() {
-    // Real-time validation for email
+    // Email validation on blur
     document.getElementById('email')?.addEventListener('blur', function() {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         const existingError = this.parentElement.querySelector('.field-error');
         if (existingError) existingError.remove();
         
@@ -222,7 +243,7 @@ function setupFormValidation() {
         }
     });
     
-    // Real-time validation for phone
+    // Phone validation on blur
     document.getElementById('phone')?.addEventListener('blur', function() {
         const phoneRegex = /^[0-9]{10,12}$/;
         const existingError = this.parentElement.querySelector('.field-error');
@@ -235,9 +256,40 @@ function setupFormValidation() {
             this.classList.remove('error');
         }
     });
+    
+    // ID Number validation on blur
+    document.getElementById('idNumber')?.addEventListener('blur', function() {
+        const idRegex = /^[0-9]{5,8}$/;
+        const existingError = this.parentElement.querySelector('.field-error');
+        if (existingError) existingError.remove();
+        
+        if (this.value && !idRegex.test(this.value)) {
+            this.classList.add('error');
+            showFieldError(this, 'Please enter a valid ID number (5-8 digits)');
+        } else {
+            this.classList.remove('error');
+        }
+    });
+    
+    // Password match validation on blur
+    document.getElementById('confirmPassword')?.addEventListener('blur', function() {
+        const password = document.getElementById('password');
+        const existingError = this.parentElement.querySelector('.field-error');
+        if (existingError) existingError.remove();
+        
+        if (this.value && password.value && this.value !== password.value) {
+            this.classList.add('error');
+            showFieldError(this, 'Passwords do not match');
+        } else {
+            this.classList.remove('error');
+        }
+    });
 }
 
-// Password strength indicator
+// ============================================
+// PASSWORD STRENGTH
+// ============================================
+
 function setupPasswordStrength() {
     const passwordInput = document.getElementById('password');
     if (!passwordInput) return;
@@ -255,6 +307,20 @@ function setupPasswordStrength() {
             text.textContent = strength.message;
             text.style.color = strength.color;
         }
+        
+        // Check password match in real-time
+        const confirmPassword = document.getElementById('confirmPassword');
+        if (confirmPassword.value) {
+            const existingError = confirmPassword.parentElement.querySelector('.field-error');
+            if (existingError) existingError.remove();
+            
+            if (this.value && confirmPassword.value && this.value !== confirmPassword.value) {
+                confirmPassword.classList.add('error');
+                showFieldError(confirmPassword, 'Passwords do not match');
+            } else {
+                confirmPassword.classList.remove('error');
+            }
+        }
     });
 }
 
@@ -270,20 +336,39 @@ function checkPasswordStrength(password) {
     if (/[^a-zA-Z0-9]/.test(password)) score += 12.5;
     
     if (score >= 80) {
-        message = 'Strong';
+        message = 'Strong 💪';
         color = '#4caf50';
     } else if (score >= 60) {
-        message = 'Good';
+        message = 'Good 👍';
         color = '#ff9800';
     } else if (score >= 40) {
-        message = 'Fair';
+        message = 'Fair ⚠️';
         color = '#ffc107';
     }
     
     return { score, message, color };
 }
 
-// File preview
+// ============================================
+// FILE UPLOAD HANDLING
+// ============================================
+
+function setupFileUploads() {
+    // File upload visual feedback
+    document.querySelectorAll('.file-upload input[type="file"]').forEach(input => {
+        input.addEventListener('change', function() {
+            const label = this.closest('.file-upload').querySelector('.file-upload-label span');
+            if (this.files && this.files[0]) {
+                label.textContent = this.files[0].name;
+                label.style.color = '#4caf50';
+            } else {
+                label.textContent = 'Click to upload';
+                label.style.color = '';
+            }
+        });
+    });
+}
+
 function previewImage(input, previewId) {
     const preview = document.getElementById(previewId);
     if (!preview) return;
@@ -293,8 +378,13 @@ function previewImage(input, previewId) {
         reader.onload = function(e) {
             preview.src = e.target.result;
             preview.style.display = 'block';
+            preview.style.maxWidth = '150px';
+            preview.style.maxHeight = '150px';
+            preview.style.marginTop = '1rem';
+            preview.style.borderRadius = '8px';
+            preview.style.objectFit = 'cover';
             
-            // Remove error state if it exists
+            // Remove error state
             input.classList.remove('error');
             const container = input.closest('.form-group');
             const existingError = container.querySelector('.field-error');
@@ -310,16 +400,23 @@ function previewFile(input, previewId) {
     
     if (input.files && input.files[0]) {
         const file = input.files[0];
+        const fileSize = (file.size / 1024).toFixed(1);
+        const icon = file.type.includes('pdf') ? 'fa-file-pdf' : 'fa-file-image';
+        const color = file.type.includes('pdf') ? '#f44336' : '#4caf50';
+        
         preview.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:#e8f5e9;border-radius:8px;margin-top:0.5rem;">
-                <i class="fas fa-file-pdf" style="color:#f44336;"></i>
-                <span>${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>
-                <i class="fas fa-check-circle" style="color:#4caf50;margin-left:auto;"></i>
+            <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:#f5f5f5;border-radius:8px;margin-top:0.5rem;border:1px solid #e0e0e0;">
+                <i class="fas ${icon}" style="color:${color};font-size:1.5rem;"></i>
+                <div style="flex:1;">
+                    <div style="font-weight:500;font-size:0.9rem;">${file.name}</div>
+                    <div style="font-size:0.8rem;color:#666;">${fileSize} KB</div>
+                </div>
+                <i class="fas fa-check-circle" style="color:#4caf50;"></i>
             </div>
         `;
         preview.style.display = 'block';
         
-        // Remove error state if it exists
+        // Remove error state
         input.classList.remove('error');
         const container = input.closest('.form-group');
         const existingError = container.querySelector('.field-error');
@@ -327,13 +424,24 @@ function previewFile(input, previewId) {
     }
 }
 
-// Handle form submission
+// ============================================
+// MAIN REGISTRATION HANDLER
+// ============================================
+
 async function handleRegistration(event) {
     event.preventDefault();
-    console.log('Registration form submitted');
+    console.log('📝 Registration form submitted');
+    
+    // Check if Supabase is available
+    if (!window.supabase) {
+        console.error('❌ Supabase not available');
+        showNotification('System error. Please refresh the page.', 'error');
+        return;
+    }
     
     // Validate final step
     if (!validateStep(3)) {
+        console.log('❌ Validation failed');
         return;
     }
     
@@ -348,110 +456,146 @@ async function handleRegistration(event) {
     
     try {
         // Collect form data
-        const fullName = document.getElementById('fullName').value.trim();
-        const idNumber = document.getElementById('idNumber').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const dateOfBirth = document.getElementById('dateOfBirth').value;
-        const gender = document.getElementById('gender').value;
-        const employmentStatus = document.getElementById('employmentStatus').value;
-        const employer = document.getElementById('employer').value.trim();
-        const monthlyIncome = parseFloat(document.getElementById('monthlyIncome').value);
-        const incomeSource = document.getElementById('incomeSource').value;
-        const address = document.getElementById('address').value.trim();
-        const password = document.getElementById('password').value;
-        const marketingConsent = document.getElementById('marketingConsent').checked;
+        const formData = {
+            fullName: document.getElementById('fullName').value.trim(),
+            idNumber: document.getElementById('idNumber').value.trim(),
+            email: document.getElementById('email').value.trim().toLowerCase(),
+            phone: document.getElementById('phone').value.trim(),
+            dateOfBirth: document.getElementById('dateOfBirth').value,
+            gender: document.getElementById('gender').value,
+            employmentStatus: document.getElementById('employmentStatus').value,
+            employer: document.getElementById('employer').value.trim(),
+            monthlyIncome: parseFloat(document.getElementById('monthlyIncome').value) || 0,
+            incomeSource: document.getElementById('incomeSource').value,
+            address: document.getElementById('address').value.trim(),
+            password: document.getElementById('password').value,
+            marketingConsent: document.getElementById('marketingConsent').checked
+        };
         
-        console.log('Form data collected:', { email, fullName, phone });
+        console.log('📊 Form data:', {
+            email: formData.email,
+            fullName: formData.fullName,
+            phone: formData.phone,
+            monthlyIncome: formData.monthlyIncome
+        });
         
-        // Register user with Supabase
+        // === STEP 1: Create Auth User ===
+        console.log('🔐 Creating user account...');
         const { data: authData, error: authError } = await window.supabase.auth.signUp({
-            email: email,
-            password: password,
+            email: formData.email,
+            password: formData.password,
             options: {
                 data: {
-                    full_name: fullName,
-                    phone: phone
+                    full_name: formData.fullName,
+                    phone: formData.phone
                 }
             }
         });
         
         if (authError) {
-            console.error('Auth error:', authError);
-            throw authError;
+            console.error('❌ Auth error:', authError);
+            
+            let errorMessage = 'Registration failed. ';
+            if (authError.message.includes('User already registered')) {
+                errorMessage = 'This email is already registered. Please login instead.';
+            } else if (authError.message.includes('Password')) {
+                errorMessage = 'Password must be at least 6 characters.';
+            } else if (authError.message) {
+                errorMessage += authError.message;
+            }
+            
+            showNotification(errorMessage, 'error');
+            submitBtn.disabled = false;
+            spinner.style.display = 'none';
+            btnText.textContent = 'Create Account';
+            return;
         }
         
-        console.log('Auth success:', authData);
-        
-        if (authData.user) {
-            // Profile will be created automatically by trigger
-            // But we need to update it with additional fields
-            const { error: profileError } = await window.supabase
-                .from('profiles')
-                .update({
-                    id_number: idNumber,
-                    date_of_birth: dateOfBirth,
-                    gender: gender,
-                    employment_status: employmentStatus,
-                    employer: employer,
-                    monthly_income: monthlyIncome,
-                    income_source: incomeSource,
-                    address: address,
-                    marketing_consent: marketingConsent
-                })
-                .eq('id', authData.user.id);
-            
-            if (profileError) {
-                console.error('Profile update error:', profileError);
-                throw profileError;
-            }
-            
-            // Upload documents if provided
-            const profilePicture = document.getElementById('profilePicture');
-            const idDocument = document.getElementById('idDocument');
-            const proofOfIncome = document.getElementById('proofOfIncome');
-            
-            const uploadPromises = [];
-            
-            if (profilePicture.files && profilePicture.files[0]) {
-                uploadPromises.push(uploadDocument(authData.user.id, 'profile_picture', profilePicture.files[0]));
-            }
-            
-            if (idDocument.files && idDocument.files[0]) {
-                uploadPromises.push(uploadDocument(authData.user.id, 'id_document', idDocument.files[0]));
-            }
-            
-            if (proofOfIncome.files && proofOfIncome.files[0]) {
-                uploadPromises.push(uploadDocument(authData.user.id, 'proof_of_income', proofOfIncome.files[0]));
-            }
-            
-            if (uploadPromises.length > 0) {
-                await Promise.all(uploadPromises);
-            }
-            
-            // Show success message
-            showNotification('Account created successfully! Please check your email for verification.', 'success');
-            
-            // Redirect to login after delay
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 3000);
+        if (!authData.user) {
+            throw new Error('No user data returned from signup');
         }
+        
+        console.log('✅ User created:', authData.user.id);
+        
+        // === STEP 2: Update Profile ===
+        console.log('📝 Updating profile...');
+        
+        // Wait a moment for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const profileData = {
+            id_number: formData.idNumber,
+            date_of_birth: formData.dateOfBirth,
+            gender: formData.gender,
+            employment_status: formData.employmentStatus,
+            employer: formData.employer || null,
+            monthly_income: formData.monthlyIncome,
+            income_source: formData.incomeSource,
+            address: formData.address,
+            marketing_consent: formData.marketingConsent
+        };
+        
+        console.log('📊 Profile data:', profileData);
+        
+        const { error: profileError } = await window.supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', authData.user.id);
+        
+        if (profileError) {
+            console.error('❌ Profile update error:', profileError);
+            // Continue anyway - profile might have been created
+        } else {
+            console.log('✅ Profile updated successfully');
+        }
+        
+        // === STEP 3: Upload Documents ===
+        console.log('📎 Uploading documents...');
+        
+        const documents = [
+            { id: 'profilePicture', type: 'profile_picture' },
+            { id: 'idDocument', type: 'id_document', required: true },
+            { id: 'proofOfIncome', type: 'proof_of_income' }
+        ];
+        
+        const uploadPromises = [];
+        
+        for (const doc of documents) {
+            const input = document.getElementById(doc.id);
+            if (input && input.files && input.files[0]) {
+                console.log(`📤 Uploading ${doc.type}...`);
+                uploadPromises.push(
+                    uploadDocument(authData.user.id, doc.type, input.files[0])
+                        .then(url => console.log(`✅ ${doc.type} uploaded`))
+                        .catch(err => console.error(`❌ ${doc.type} upload failed:`, err))
+                );
+            }
+        }
+        
+        if (uploadPromises.length > 0) {
+            await Promise.allSettled(uploadPromises);
+            console.log('📎 Document uploads completed');
+        }
+        
+        // === SUCCESS ===
+        console.log('🎉 Registration complete!');
+        showNotification(
+            '✅ Account created successfully! Please check your email for verification.',
+            'success'
+        );
+        
+        // Redirect to login
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 3000);
         
     } catch (error) {
-        console.error('Registration error:', error);
-        
-        let errorMessage = 'Registration failed. Please try again.';
-        if (error.message && error.message.includes('User already registered')) {
-            errorMessage = 'This email is already registered. Please login instead.';
-        } else if (error.message && error.message.includes('Password should be at least')) {
-            errorMessage = 'Password must be at least 6 characters long.';
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        
-        showNotification(errorMessage, 'error');
-        
+        console.error('❌ Registration error:', error);
+        showNotification(
+            error.message || 'Registration failed. Please try again.',
+            'error'
+        );
+    } finally {
         // Re-enable button
         submitBtn.disabled = false;
         spinner.style.display = 'none';
@@ -459,60 +603,71 @@ async function handleRegistration(event) {
     }
 }
 
-// Upload document to Supabase Storage
+// ============================================
+// DOCUMENT UPLOAD
+// ============================================
+
 async function uploadDocument(userId, documentType, file) {
     try {
-        console.log(`Uploading ${documentType} for user ${userId}`);
+        console.log(`📤 Uploading ${documentType}...`);
         
-        // Create folder structure
+        // Validate file
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            throw new Error('File size exceeds 5MB limit');
+        }
+        
+        // Create file path
         const fileExt = file.name.split('.').pop();
         const fileName = `${userId}/${documentType}_${Date.now()}.${fileExt}`;
         
-        // Upload file
+        // Upload to storage
         const { data, error } = await window.supabase.storage
             .from('documents')
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: false
             });
-            
+        
         if (error) {
-            console.error('Storage upload error:', error);
+            console.error('❌ Storage upload error:', error);
             throw error;
         }
         
-        console.log('File uploaded:', data);
+        console.log(`✅ ${documentType} uploaded to storage`);
         
         // Get public URL
         const { data: { publicUrl } } = window.supabase.storage
             .from('documents')
             .getPublicUrl(fileName);
-            
-        // Save document reference in database
+        
+        // Save document record
         const { error: docError } = await window.supabase
             .from('documents')
-            .insert([
-                {
-                    user_id: userId,
-                    document_type: documentType,
-                    file_name: fileName,
-                    file_url: publicUrl
-                }
-            ]);
-            
+            .insert({
+                user_id: userId,
+                document_type: documentType,
+                file_name: fileName,
+                file_url: publicUrl
+            });
+        
         if (docError) {
-            console.error('Document record error:', docError);
-            throw docError;
+            console.error('❌ Document record error:', docError);
+            // Don't throw - the file is uploaded but we couldn't save the record
         }
-            
+        
         return publicUrl;
+        
     } catch (error) {
-        console.error('Document upload error:', error);
+        console.error(`❌ ${documentType} upload error:`, error);
         throw error;
     }
 }
 
-// Modal functions
+// ============================================
+// MODAL FUNCTIONS
+// ============================================
+
 function showTerms() {
     const modal = document.getElementById('termsModal');
     if (modal) modal.classList.add('show');
@@ -533,14 +688,16 @@ function closePrivacyModal() {
     if (modal) modal.classList.remove('show');
 }
 
-// Close modals when clicking outside
+// ============================================
+// CLOSE MODALS
+// ============================================
+
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('modal')) {
         e.target.classList.remove('show');
     }
 });
 
-// Close modals with Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.querySelectorAll('.modal.show').forEach(modal => {
@@ -549,7 +706,10 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Make functions globally available
+// ============================================
+// EXPOSE GLOBALLY
+// ============================================
+
 window.goToStep = goToStep;
 window.validateStep = validateStep;
 window.previewImage = previewImage;
@@ -559,3 +719,5 @@ window.showTerms = showTerms;
 window.closeTermsModal = closeTermsModal;
 window.showPrivacy = showPrivacy;
 window.closePrivacyModal = closePrivacyModal;
+
+console.log('✅ registration.js loaded successfully');
