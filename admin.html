@@ -3,154 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - SAM Loans</title>
+    <title>Admin - SAM Loans</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <nav class="navbar" id="mainNav">
-        <div class="container">
-            <div class="nav-brand">
+    <div class="dashboard-container">
+        <!-- Admin Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
                 <i class="fas fa-hand-holding-usd"></i>
-                <h1>SAM Loans Admin</h1>
+                <span>SAM Loans Admin</span>
             </div>
-            <div class="nav-links">
-                <a href="index.html"><i class="fas fa-home"></i> Home</a>
-                <a href="dashboard.html"><i class="fas fa-chart-pie"></i> Dashboard</a>
-                <a href="admin.html"><i class="fas fa-cog"></i> Admin</a>
-                <button class="btn btn-secondary" onclick="handleLogout()">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+            
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="user-info">
+                    <h4 id="adminName">Admin</h4>
+                    <p id="adminEmail">admin@samloans.com</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="active" data-page="admin-overview">
+                    <i class="fas fa-th-large"></i>
+                    <span>Overview</span>
+                </a>
+                <a href="#" data-page="admin-users">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a>
+                <a href="#" data-page="admin-loans">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>Loans</span>
+                </a>
+                <a href="#" data-page="admin-pending">
+                    <i class="fas fa-clock"></i>
+                    <span>Pending Approvals</span>
+                    <span class="badge" id="pendingCount">0</span>
+                </a>
+                <a href="#" data-page="admin-repayments">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Repayments</span>
+                </a>
+                <a href="#" data-page="admin-reports">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button onclick="handleLogout()" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
                 </button>
             </div>
-        </div>
-    </nav>
+        </aside>
 
-    <section class="admin-dashboard">
-        <div class="container">
-            <div class="admin-header">
-                <h1><i class="fas fa-cog"></i> Admin Panel</h1>
-                <div class="admin-stats" id="adminStats">
-                    <div class="stat-card">
-                        <i class="fas fa-clock" style="color: #e65100;"></i>
-                        <div>
-                            <h3 id="pendingCount">0</h3>
-                            <p>Pending Applications</p>
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <button class="menu-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 id="pageTitle">Admin Overview</h2>
+            </header>
+
+            <div class="page-content">
+                <!-- Overview -->
+                <div id="page-admin-overview" class="page-section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="totalUsers">0</h3>
+                                <p>Total Users</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="totalLoans">0</h3>
+                                <p>Total Loans</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="pendingLoans">0</h3>
+                                <p>Pending Loans</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="totalDisbursed">KES 0</h3>
+                                <p>Total Disbursed</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <i class="fas fa-users" style="color: #0d47a1;"></i>
-                        <div>
-                            <h3 id="totalUsers">0</h3>
-                            <p>Total Users</p>
+
+                    <div class="content-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Recent Users</h3>
+                                <a href="#" onclick="navigateTo('admin-users')">View All</a>
+                            </div>
+                            <div class="card-body" id="recentUsers">
+                                <p class="text-muted">Loading users...</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Recent Applications</h3>
+                                <a href="#" onclick="navigateTo('admin-pending')">View All</a>
+                            </div>
+                            <div class="card-body" id="recentApplications">
+                                <p class="text-muted">Loading applications...</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <i class="fas fa-coins" style="color: #2e7d32;"></i>
-                        <div>
-                            <h3 id="totalDisbursed">KES 0</h3>
-                            <p>Total Disbursed</p>
+                </div>
+
+                <!-- Users Management -->
+                <div id="page-admin-users" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>All Users</h3>
+                            <div class="search-box">
+                                <input type="text" id="userSearch" placeholder="Search users..." onkeyup="searchUsers()">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Status</th>
+                                            <th>Joined</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTableBody">
+                                        <tr><td colspan="6" class="text-center">Loading users...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <i class="fas fa-check-circle" style="color: #1a237e;"></i>
-                        <div>
-                            <h3 id="kycVerified">0</h3>
-                            <p>KYC Verified Users</p>
+                </div>
+
+                <!-- Loans Management -->
+                <div id="page-admin-loans" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>All Loans</h3>
+                            <select id="loanStatusFilter" onchange="filterLoans()">
+                                <option value="all">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="active">Active</option>
+                                <option value="completed">Completed</option>
+                                <option value="defaulted">Defaulted</option>
+                            </select>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Amount</th>
+                                            <th>Term</th>
+                                            <th>Monthly</th>
+                                            <th>Status</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="loansTableBody">
+                                        <tr><td colspan="7" class="text-center">Loading loans...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Approvals -->
+                <div id="page-admin-pending" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Pending Approvals</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Amount</th>
+                                            <th>Term</th>
+                                            <th>Monthly Income</th>
+                                            <th>Applied</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pendingTableBody">
+                                        <tr><td colspan="6" class="text-center">No pending applications</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Repayments -->
+                <div id="page-admin-repayments" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>All Repayments</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Loan</th>
+                                            <th>Amount</th>
+                                            <th>Method</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="repaymentsTableBody">
+                                        <tr><td colspan="6" class="text-center">Loading repayments...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports -->
+                <div id="page-admin-reports" class="page-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Reports</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="report-grid">
+                                <div class="report-item" onclick="generateReport('users')">
+                                    <i class="fas fa-users"></i>
+                                    <h4>Users Report</h4>
+                                    <p>Download user statistics</p>
+                                </div>
+                                <div class="report-item" onclick="generateReport('loans')">
+                                    <i class="fas fa-hand-holding-usd"></i>
+                                    <h4>Loans Report</h4>
+                                    <p>Download loan statistics</p>
+                                </div>
+                                <div class="report-item" onclick="generateReport('repayments')">
+                                    <i class="fas fa-credit-card"></i>
+                                    <h4>Repayments Report</h4>
+                                    <p>Download repayment statistics</p>
+                                </div>
+                                <div class="report-item" onclick="generateReport('financial')">
+                                    <i class="fas fa-chart-line"></i>
+                                    <h4>Financial Report</h4>
+                                    <p>Download financial summary</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Tabs -->
-            <div class="admin-tabs">
-                <button class="tab-btn active" data-tab="pending" onclick="switchTab('pending')">
-                    <i class="fas fa-clock"></i> Pending
-                </button>
-                <button class="tab-btn" data-tab="approved" onclick="switchTab('approved')">
-                    <i class="fas fa-check-circle"></i> Approved
-                </button>
-                <button class="tab-btn" data-tab="disbursed" onclick="switchTab('disbursed')">
-                    <i class="fas fa-hand-holding-usd"></i> Disbursed
-                </button>
-                <button class="tab-btn" data-tab="rejected" onclick="switchTab('rejected')">
-                    <i class="fas fa-times-circle"></i> Rejected
-                </button>
-                <button class="tab-btn" data-tab="users" onclick="switchTab('users')">
-                    <i class="fas fa-users"></i> Users
-                </button>
-                <button class="tab-btn" data-tab="kyc" onclick="switchTab('kyc')">
-                    <i class="fas fa-id-card"></i> KYC
-                </button>
-            </div>
-
-            <!-- Tab Contents -->
-            <div id="pending" class="tab-content active">
-                <div class="tab-header">
-                    <h2>Pending Loan Applications</h2>
-                    <span id="pendingCountDisplay">0 applications</span>
-                </div>
-                <div id="pendingLoansList"></div>
-            </div>
-
-            <div id="approved" class="tab-content">
-                <div class="tab-header">
-                    <h2>Approved Loans</h2>
-                    <span id="approvedCountDisplay">0 applications</span>
-                </div>
-                <div id="approvedLoansList"></div>
-            </div>
-
-            <div id="disbursed" class="tab-content">
-                <div class="tab-header">
-                    <h2>Disbursed Loans</h2>
-                    <span id="disbursedCountDisplay">0 applications</span>
-                </div>
-                <div id="disbursedLoansList"></div>
-            </div>
-
-            <div id="rejected" class="tab-content">
-                <div class="tab-header">
-                    <h2>Rejected Loans</h2>
-                    <span id="rejectedCountDisplay">0 applications</span>
-                </div>
-                <div id="rejectedLoansList"></div>
-            </div>
-
-            <div id="users" class="tab-content">
-                <div class="tab-header">
-                    <h2>User Management</h2>
-                </div>
-                <div id="usersList"></div>
-            </div>
-
-            <div id="kyc" class="tab-content">
-                <div class="tab-header">
-                    <h2>KYC Verification</h2>
-                    <span id="kycCountDisplay">0 pending</span>
-                </div>
-                <div id="kycList"></div>
-            </div>
-        </div>
-    </section>
+        </main>
+    </div>
 
     <!-- Action Modal -->
     <div id="actionModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeActionModal()">&times;</span>
-            <h2 id="actionModalTitle">Loan Action</h2>
-            <form id="actionForm" onsubmit="handleLoanAction(event)">
-                <input type="hidden" id="actionLoanId">
-                <input type="hidden" id="actionType">
-                <div id="actionFields"></div>
-                <button type="submit" class="btn btn-primary btn-full" id="actionSubmitBtn">Submit</button>
-            </form>
+            <span class="close" onclick="closeModal('actionModal')">&times;</span>
+            <h2 id="actionModalTitle">Action</h2>
+            <div id="actionModalBody"></div>
+            <div id="actionModalButtons"></div>
         </div>
     </div>
 
     <script src="js/supabase-config.js"></script>
-    <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>
