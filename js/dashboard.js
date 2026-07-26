@@ -1,840 +1,675 @@
-// js/dashboard.js - Complete Working Version with Fixed Column Names
-let dashboardUser = null;
-let userData = null;
-let allLoans = [];
-let kycProfileFile = null;
-let kycIdFile = null;
+// Dashboard JavaScript
+let currentUser = null;
+let currentPage = 'overview';
 
-// Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await checkUserAuth();
-        await loadUserProfile();
-        await loadDashboardStats();
-        await loadLoanHistory();
-        await checkKYCStatus();
-        setupLoanCalculator();
-    } catch (error) {
-        console.error('Dashboard initialization error:', error);
-        showToast('Error loading dashboard', 'error');
+// ============================================
+// INITIALIZATION
+// ============================================
+
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('📊 Dashboard loading...');
+    
+    // Check authentication
+    const user = await checkAuth();
+    if (!user) {
+        window.location.href = 'login.html';
+        return;
     }
+    
+    currentUser = user;
+    console.log('👤 User authenticated:', user.email);
+    
+    // Load user profile
+    await loadUserProfile();
+    
+    // Load dashboard data
+    await loadDashboardData();
+    
+    // Setup navigation
+    setupNavigation();
+    
+    // Setup loan calculator
+    setupLoanCalculator();
 });
 
-// ============ AUTHENTICATION ============
-async function checkUserAuth() {
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) {
-            window.location.href = 'index.html';
-            return;
-        }
-        dashboardUser = user;
-        
-        // Check if admin
-        try {
-            const { data: userData } = await supabaseClient
-                .from('users')
-                .select('role')
-                .eq('id', user.id)
-                .single();
-                
-            const adminLink = document.getElementById('adminLink');
-            if (userData?.role === 'admin' && adminLink) {
-                adminLink.style.display = 'inline';
-            }
-        } catch (e) {
-            console.warn('Could not check admin status:', e);
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = 'index.html';
-    }
-}
+// ============================================
+// USER PROFILE
+// ============================================
 
-// ============ USER PROFILE ============
 async function loadUserProfile() {
     try {
-        // Select only columns that exist
-        const { data, error } = await supabaseClient
-            .from('users')
-            .select(`
-                id,
-                email,
-                full_name,
-                id_number,
-                phone,
-                date_of_birth,
-                gender,
-                occupation,
-                monthly_income,
-                role,
-                profile_picture_url,
-                id_picture_url,
-                kyc_verified,
-                kyc_submitted_at,
-                kyc_verified_at,
-                kyc_verified_by,
-                kyc_rejection_reason,
-                terms_accepted,
-                terms_accepted_date,
-                created_at,
-                updated_at
-            `)
-            .eq('id', dashboardUser.id)
+        const { data: profile, error } = await window.supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
             .single();
         
         if (error) throw error;
-        
-        userData = data;
         
         // Update UI
-        const userName = document.getElementById('userName');
-        const userEmail = document.getElementById('userEmail');
-        const userPhone = document.getElementById('userPhone');
-        const userIdNumber = document.getElementById('userIdNumber');
-        const profileAvatar = document.getElementById('profileAvatar');
+        document.getElementById('userName').textContent = profile.full_name || 'User';
+        document.getElementById('userEmail').textContent = currentUser.email;
         
-        if (userName) userName.textContent = `Welcome, ${data.full_name}!`;
-        if (userEmail) userEmail.textContent = data.email;
-        if (userPhone) userPhone.textContent = data.phone || 'Not provided';
-        if (userIdNumber) userIdNumber.textContent = data.id_number || 'Not provided';
+        // Store profile for later use
+        window.userProfile = profile;
         
-        if (profileAvatar) {
-            if (data.profile_picture_url && data.profile_picture_url.startsWith('http')) {
-                profileAvatar.src = data.profile_picture_url;
-            } else {
-                profileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.full_name)}&background=1a237e&color=fff&size=100`;
-            }
+        // Update profile form if on profile page
+        if (document.getElementById('profileFullName')) {
+            document.getElementById('profileFullName').value = profile.full_name || '';
+            document.getElementById('profilePhone').value = profile.phone || '';
+            document.getElementById('profileIdNumber').value = profile.id_number || '';
+            document.getElementById('profileDob').value = profile.date_of_birth || '';
+            document.getElementById('profileGender').value = profile.gender || '';
+            document.getElementById('profileEmploymentStatus').value = profile.employment_status || '';
+            document.getElementById('profileMonthlyIncome').value = profile.monthly_income || '';
+            document.getElementById('profileAddress').value = profile.address || '';
         }
         
-        await checkKYCStatus();
+        // Load avatar
+        if (profile.avatar_url) {
+            document.getElementById('profileAvatar').src = profile.avatar_url;
+        }
+        
+        console.log('✅ Profile loaded');
         
     } catch (error) {
-        console.error('Error loading user profile:', error);
-        showToast('Error loading profile', 'error');
+        console.error('❌ Error loading profile:', error);
+        showNotification('Error loading profile', 'error');
     }
 }
 
-// ============ KYC STATUS ============
-async function checkKYCStatus() {
-    if (!userData) return;
-    
-    const kycStatusCard = document.getElementById('kycStatusCard');
-    const kycStatusBadge = document.getElementById('kycStatusBadge');
-    const kycStatusMessage = document.getElementById('kycStatusMessage');
-    const kycActionButtons = document.getElementById('kycActionButtons');
-    const kycSubmittedInfo = document.getElementById('kycSubmittedInfo');
-    const kycSubmittedDate = document.getElementById('kycSubmittedDate');
-    
-    if (!kycStatusCard) return;
-    
+// ============================================
+// DASHBOARD DATA
+// ============================================
+
+async function loadDashboardData() {
     try {
-        // Fetch fresh user data with only existing columns
-        const { data, error } = await supabaseClient
-            .from('users')
-            .select(`
-                id,
-                full_name,
-                profile_picture_url,
-                id_picture_url,
-                kyc_verified,
-                kyc_submitted_at,
-                kyc_verified_at,
-                kyc_rejection_reason
-            `)
-            .eq('id', dashboardUser.id)
-            .single();
+        // Load loans
+        const { data: loans, error: loansError } = await window.supabase
+            .from('loans')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('application_date', { ascending: false });
         
-        if (error) throw error;
-        userData = { ...userData, ...data };
+        if (loansError) throw loansError;
         
-        if (userData.kyc_verified === true) {
-            // VERIFIED
-            kycStatusCard.className = 'kyc-status-card verified';
-            if (kycStatusBadge) {
-                kycStatusBadge.className = 'status-badge status-approved';
-                kycStatusBadge.textContent = 'VERIFIED';
-            }
-            if (kycStatusMessage) {
-                kycStatusMessage.innerHTML = `
-                    <p><i class="fas fa-check-circle" style="color: var(--success);"></i> 
-                    Your KYC has been verified! You can now apply for loans.</p>
-                    ${userData.kyc_verified_at ? `<p><small>Verified on: ${new Date(userData.kyc_verified_at).toLocaleDateString()}</small></p>` : ''}
-                `;
-            }
-            if (kycActionButtons) kycActionButtons.style.display = 'none';
-            if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
-            
-        } else if (userData.id_picture_url && userData.profile_picture_url && 
-                   userData.id_picture_url !== 'data:image' && userData.profile_picture_url !== 'data:image') {
-            // PENDING - Documents submitted
-            kycStatusCard.className = 'kyc-status-card';
-            if (kycStatusBadge) {
-                kycStatusBadge.className = 'status-badge status-pending';
-                kycStatusBadge.textContent = 'PENDING';
-            }
-            if (kycStatusMessage) {
-                kycStatusMessage.innerHTML = `
-                    <p><i class="fas fa-clock" style="color: var(--warning);"></i> 
-                    Your documents have been submitted and are pending verification.</p>
-                    <p><small>Please wait for admin approval. This usually takes 24-48 hours.</small></p>
-                `;
-            }
-            if (kycActionButtons) {
-                kycActionButtons.innerHTML = `
-                    <button class="btn btn-secondary" onclick="startKYC()">
-                        <i class="fas fa-edit"></i> Update Documents
-                    </button>
-                `;
-            }
-            if (kycSubmittedInfo) {
-                kycSubmittedInfo.style.display = 'block';
-                if (kycSubmittedDate) {
-                    kycSubmittedDate.textContent = userData.kyc_submitted_at ? 
-                        new Date(userData.kyc_submitted_at).toLocaleDateString() : 
-                        'Recent';
-                }
-            }
-            
-        } else if (userData.kyc_rejection_reason) {
-            // REJECTED
-            kycStatusCard.className = 'kyc-status-card rejected';
-            if (kycStatusBadge) {
-                kycStatusBadge.className = 'status-badge status-rejected';
-                kycStatusBadge.textContent = 'REJECTED';
-            }
-            if (kycStatusMessage) {
-                kycStatusMessage.innerHTML = `
-                    <p><i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> 
-                    Your KYC verification was rejected.</p>
-                    <p><strong>Reason:</strong> ${userData.kyc_rejection_reason}</p>
-                    <p><small>Please upload new documents for verification.</small></p>
-                `;
-            }
-            if (kycActionButtons) {
-                kycActionButtons.innerHTML = `
-                    <button class="btn btn-primary" onclick="startKYC()">
-                        <i class="fas fa-upload"></i> Resubmit Documents
-                    </button>
-                `;
-            }
-            if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
-            
-        } else {
-            // NOT SUBMITTED
-            kycStatusCard.className = 'kyc-status-card';
-            if (kycStatusBadge) {
-                kycStatusBadge.className = 'status-badge status-pending';
-                kycStatusBadge.textContent = 'NOT SUBMITTED';
-            }
-            if (kycStatusMessage) {
-                kycStatusMessage.innerHTML = `
-                    <p><i class="fas fa-info-circle"></i> 
-                    Please complete your KYC verification to access all features.</p>
-                    <p><small>You need to upload your profile picture and ID document.</small></p>
-                `;
-            }
-            if (kycActionButtons) {
-                kycActionButtons.innerHTML = `
-                    <button class="btn btn-primary" onclick="startKYC()">
-                        <i class="fas fa-upload"></i> Start KYC Verification
-                    </button>
-                `;
-            }
-            if (kycSubmittedInfo) kycSubmittedInfo.style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error checking KYC status:', error);
-    }
-}
-
-// ============ KYC MODAL ============
-function startKYC() {
-    let kycModal = document.getElementById('kycModal');
-    
-    if (!kycModal) {
-        kycModal = document.createElement('div');
-        kycModal.id = 'kycModal';
-        kycModal.className = 'modal';
-        kycModal.innerHTML = `
-            <div class="modal-content kyc-modal-content">
-                <span class="close" onclick="closeKYCModal()">&times;</span>
-                <div class="auth-header">
-                    <h2><i class="fas fa-id-card"></i> KYC Verification</h2>
-                    <p>Please upload your documents for verification</p>
+        // Update stats
+        const totalLoans = loans.length;
+        const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'approved').length;
+        const pendingLoans = loans.filter(l => l.status === 'pending').length;
+        const totalRepaid = loans
+            .filter(l => l.status === 'completed')
+            .reduce((sum, l) => sum + l.total_amount, 0);
+        
+        document.getElementById('totalLoans').textContent = totalLoans;
+        document.getElementById('activeLoans').textContent = activeLoans;
+        document.getElementById('pendingLoans').textContent = pendingLoans;
+        document.getElementById('totalRepaid').textContent = `KES ${totalRepaid.toLocaleString()}`;
+        
+        // Load recent loans
+        const recentLoans = loans.slice(0, 5);
+        const recentLoansContainer = document.getElementById('recentLoans');
+        
+        if (recentLoans.length > 0) {
+            recentLoansContainer.innerHTML = recentLoans.map(loan => `
+                <div class="loan-item">
+                    <div class="loan-info">
+                        <span class="loan-amount">KES ${loan.amount.toLocaleString()}</span>
+                        <span class="loan-date">${new Date(loan.application_date).toLocaleDateString()}</span>
+                    </div>
+                    <span class="status-badge status-${loan.status}">${loan.status}</span>
                 </div>
-                <form id="kycForm" onsubmit="submitKYC(event)" enctype="multipart/form-data">
-                    <div class="kyc-document-upload">
-                        <div class="kyc-document-box" id="profileBox">
-                            <i class="fas fa-user-circle"></i>
-                            <h4>Profile Picture</h4>
-                            <p>Upload a clear photo of yourself</p>
-                            <input type="file" id="kycProfilePicture" accept="image/*" onchange="previewKYCDocument(this, 'profile')" required>
-                            <img id="kycProfilePreview" class="kyc-document-preview" style="display:none;" alt="Profile preview">
-                            <div id="profileStatus" class="kyc-document-status"></div>
-                        </div>
-                        <div class="kyc-document-box" id="idBox">
-                            <i class="fas fa-id-card"></i>
-                            <h4>ID Document</h4>
-                            <p>Upload your national ID or passport</p>
-                            <input type="file" id="kycIdDocument" accept="image/*" onchange="previewKYCDocument(this, 'id')" required>
-                            <img id="kycIdPreview" class="kyc-document-preview" style="display:none;" alt="ID preview">
-                            <div id="idStatus" class="kyc-document-status"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-sticky-note"></i> Additional Notes (Optional)</label>
-                        <textarea id="kycNotes" placeholder="Any additional information..." rows="2"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full" id="kycSubmitBtn">
-                        <i class="fas fa-paper-plane"></i> Submit for Verification
-                    </button>
-                </form>
-            </div>
-        `;
-        document.body.appendChild(kycModal);
-    }
-    
-    // Pre-fill existing documents if any
-    if (userData.profile_picture_url && userData.profile_picture_url.startsWith('http')) {
-        const preview = document.getElementById('kycProfilePreview');
-        if (preview) {
-            preview.src = userData.profile_picture_url;
-            preview.style.display = 'block';
-            document.getElementById('profileBox')?.classList.add('has-file');
-            document.getElementById('profileStatus').innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Uploaded';
-            document.getElementById('profileStatus').className = 'kyc-document-status uploaded';
-        }
-    }
-    
-    if (userData.id_picture_url && userData.id_picture_url.startsWith('http')) {
-        const preview = document.getElementById('kycIdPreview');
-        if (preview) {
-            preview.src = userData.id_picture_url;
-            preview.style.display = 'block';
-            document.getElementById('idBox')?.classList.add('has-file');
-            document.getElementById('idStatus').innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Uploaded';
-            document.getElementById('idStatus').className = 'kyc-document-status uploaded';
-        }
-    }
-    
-    kycModal.style.display = 'flex';
-}
-
-function closeKYCModal() {
-    const modal = document.getElementById('kycModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function previewKYCDocument(input, type) {
-    const previewId = type === 'profile' ? 'kycProfilePreview' : 'kycIdPreview';
-    const statusId = type === 'profile' ? 'profileStatus' : 'idStatus';
-    const boxId = type === 'profile' ? 'profileBox' : 'idBox';
-    
-    const preview = document.getElementById(previewId);
-    const status = document.getElementById(statusId);
-    const box = document.getElementById(boxId);
-    
-    if (input.files && input.files[0] && preview) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            if (box) box.classList.add('has-file');
-            if (status) {
-                status.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Ready to upload';
-                status.className = 'kyc-document-status uploaded';
-            }
-        };
-        reader.readAsDataURL(input.files[0]);
-        
-        if (type === 'profile') {
-            kycProfileFile = input.files[0];
-        } else if (type === 'id') {
-            kycIdFile = input.files[0];
-        }
-    }
-}
-
-// ============ SUBMIT KYC ============
-async function submitKYC(event) {
-    event.preventDefault();
-    
-    const submitBtn = document.getElementById('kycSubmitBtn');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    
-    try {
-        let profileUrl = userData.profile_picture_url;
-        let idUrl = userData.id_picture_url;
-        
-        // Upload profile picture
-        if (kycProfileFile) {
-            try {
-                const uploaded = await uploadToSupabaseStorage('profiles', kycProfileFile, dashboardUser.id);
-                if (uploaded) {
-                    profileUrl = uploaded;
-                } else {
-                    profileUrl = await convertToBase64(kycProfileFile);
+            `).join('');
+            
+            // Add styles for loan items
+            const style = document.createElement('style');
+            style.textContent = `
+                .loan-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.75rem 0;
+                    border-bottom: 1px solid #f0f0f0;
                 }
-            } catch (error) {
-                console.warn('Storage upload failed, trying base64:', error);
-                profileUrl = await convertToBase64(kycProfileFile);
-            }
-        }
-        
-        // Upload ID document
-        if (kycIdFile) {
-            try {
-                const uploaded = await uploadToSupabaseStorage('kyc', kycIdFile, dashboardUser.id);
-                if (uploaded) {
-                    idUrl = uploaded;
-                } else {
-                    idUrl = await convertToBase64(kycIdFile);
+                .loan-item:last-child {
+                    border-bottom: none;
                 }
-            } catch (error) {
-                console.warn('Storage upload failed, trying base64:', error);
-                idUrl = await convertToBase64(kycIdFile);
-            }
+                .loan-info {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .loan-amount {
+                    font-weight: 600;
+                }
+                .loan-date {
+                    font-size: 0.75rem;
+                    color: #999;
+                }
+            `;
+            document.head.appendChild(style);
+        } else {
+            recentLoansContainer.innerHTML = '<p class="text-muted">No loans yet. Apply for your first loan!</p>';
         }
         
-        // Check if we have both documents
-        if (!profileUrl || !idUrl) {
-            throw new Error('Please upload both profile picture and ID document');
-        }
+        // Store loans for later use
+        window.userLoans = loans;
         
-        // Update user record - using only existing columns
-        const notes = document.getElementById('kycNotes')?.value || '';
-        const updateData = {
-            profile_picture_url: profileUrl,
-            id_picture_url: idUrl,
-            kyc_submitted_at: new Date().toISOString(),
-            kyc_verified: false,
-            kyc_rejection_reason: null
-        };
-        
-        // Only add admin_notes if the column exists (we'll handle it separately)
-        if (notes) {
-            // Try to update admin_notes if column exists
-            try {
-                await supabaseClient
-                    .from('users')
-                    .update({ admin_notes: notes })
-                    .eq('id', dashboardUser.id);
-            } catch (e) {
-                console.warn('admin_notes column not found, skipping');
-            }
-        }
-        
-        const { error: updateError } = await supabaseClient
-            .from('users')
-            .update(updateData)
-            .eq('id', dashboardUser.id);
-        
-        if (updateError) throw updateError;
-        
-        // Reload user data
-        await loadUserProfile();
-        await checkKYCStatus();
-        
-        showToast('KYC documents submitted successfully! Pending verification.', 'success');
-        closeKYCModal();
-        
-        // Reset file variables
-        kycProfileFile = null;
-        kycIdFile = null;
+        console.log('✅ Dashboard data loaded');
         
     } catch (error) {
-        console.error('KYC submission error:', error);
-        showToast(error.message || 'Error submitting KYC documents. Please try again.', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        console.error('❌ Error loading dashboard data:', error);
+        showNotification('Error loading dashboard data', 'error');
     }
 }
 
-// ============ STORAGE UPLOAD HELPER ============
-async function uploadToSupabaseStorage(bucket, file, userId) {
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}/${Date.now()}.${fileExt}`;
-        
-        const { data, error } = await supabaseClient.storage
-            .from(bucket)
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: true
-            });
-        
-        if (error) {
-            console.error('Storage upload error:', error);
-            return null;
-        }
-        
-        const { data: { publicUrl } } = supabaseClient.storage
-            .from(bucket)
-            .getPublicUrl(fileName);
-        
-        return publicUrl;
-    } catch (error) {
-        console.error('Upload exception:', error);
-        return null;
-    }
-}
+// ============================================
+// NAVIGATION
+// ============================================
 
-// ============ BASE64 CONVERTER ============
-function convertToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
+function setupNavigation() {
+    // Sidebar navigation
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.dataset.page;
+            if (page) {
+                navigateTo(page);
+            }
+        });
+    });
+    
+    // Filter tabs for loans
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            filterLoans(this.dataset.filter);
+        });
     });
 }
 
-// ============ DASHBOARD STATS ============
-async function loadDashboardStats() {
-    try {
-        const { data: loans, error } = await supabaseClient
-            .from('loans')
-            .select('*')
-            .eq('user_id', dashboardUser.id);
-        
-        if (error) throw error;
-        
-        allLoans = loans || [];
-        
-        const activeLoans = allLoans.filter(l => l.status === 'approved' || l.status === 'disbursed' || l.status === 'repaying');
-        const pendingLoans = allLoans.filter(l => l.status === 'pending');
-        const totalBorrowed = allLoans.filter(l => l.status === 'disbursed' || l.status === 'repaying').reduce((sum, l) => sum + l.amount, 0);
-        const outstanding = allLoans.filter(l => l.status === 'disbursed' || l.status === 'repaying' || l.status === 'approved').reduce((sum, l) => sum + l.amount, 0);
-        
-        const totalBorrowedEl = document.getElementById('totalBorrowed');
-        const activeLoansEl = document.getElementById('activeLoans');
-        const pendingLoansEl = document.getElementById('pendingLoans');
-        const outstandingEl = document.getElementById('outstandingBalance');
-        
-        if (totalBorrowedEl) totalBorrowedEl.textContent = `KES ${totalBorrowed.toLocaleString()}`;
-        if (activeLoansEl) activeLoansEl.textContent = activeLoans.length;
-        if (pendingLoansEl) pendingLoansEl.textContent = pendingLoans.length;
-        if (outstandingEl) outstandingEl.textContent = `KES ${outstanding.toLocaleString()}`;
-        
-    } catch (error) {
-        console.error('Error loading stats:', error);
-        showToast('Error loading dashboard stats', 'error');
+function navigateTo(page) {
+    // Update sidebar
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+        link.classList.toggle('active', link.dataset.page === page);
+    });
+    
+    // Update page
+    document.querySelectorAll('.page-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    const targetSection = document.getElementById(`page-${page}`);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+    
+    // Update title
+    const pageTitles = {
+        'overview': 'Overview',
+        'apply-loan': 'Apply for Loan',
+        'my-loans': 'My Loans',
+        'repayments': 'Repayments',
+        'profile': 'Profile'
+    };
+    document.getElementById('pageTitle').textContent = pageTitles[page] || page;
+    
+    // Load page-specific data
+    currentPage = page;
+    
+    if (page === 'my-loans') {
+        loadMyLoans();
+    } else if (page === 'repayments') {
+        loadRepayments();
     }
 }
 
-// ============ LOAN APPLICATION ============
-async function submitLoanApplication(event) {
-    event.preventDefault();
-    
-    if (!userData.kyc_verified) {
-        showToast('Please complete KYC verification before applying for a loan', 'warning');
-        startKYC();
-        return;
-    }
-    
-    const amount = parseFloat(document.getElementById('loanAmount').value);
-    const tenure = parseInt(document.getElementById('loanTenure').value);
-    const purpose = document.getElementById('loanPurpose').value;
-    const description = document.getElementById('loanDescription').value;
-    
-    if (amount < 10000) {
-        showToast('Minimum loan amount is KES 10,000', 'error');
-        return;
-    }
-    
-    if (amount > 5000000) {
-        showToast('Maximum loan amount is KES 5,000,000', 'error');
-        return;
-    }
-    
-    if (!purpose) {
-        showToast('Please select a loan purpose', 'error');
-        return;
-    }
-    
-    const submitBtn = event.target.querySelector('.btn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    submitBtn.disabled = true;
-    
-    try {
-        const { data, error } = await supabaseClient
-            .from('loans')
-            .insert([{
-                user_id: dashboardUser.id,
-                amount: amount,
-                purpose: purpose,
-                tenure: tenure,
-                application_date: new Date().toISOString(),
-                status: 'pending',
-                interest_rate: 5.0,
-                admin_notes: description || null
-            }])
-            .select();
-        
-        if (error) throw error;
-        
-        showToast('Loan application submitted successfully!', 'success');
-        event.target.reset();
-        const loanSummary = document.getElementById('loanSummary');
-        if (loanSummary) loanSummary.style.display = 'none';
-        
-        await loadDashboardStats();
-        await loadLoanHistory();
-        
-    } catch (error) {
-        console.error('Error submitting loan:', error);
-        showToast('Error submitting loan application. Please try again.', 'error');
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }
-}
+// ============================================
+// MY LOANS
+// ============================================
 
-// ============ LOAN HISTORY ============
-async function loadLoanHistory() {
+async function loadMyLoans() {
+    const container = document.getElementById('loansList');
+    container.innerHTML = '<p class="text-muted">Loading loans...</p>';
+    
     try {
-        const { data: loans, error } = await supabaseClient
+        const { data: loans, error } = await window.supabase
             .from('loans')
             .select('*')
-            .eq('user_id', dashboardUser.id)
+            .eq('user_id', currentUser.id)
             .order('application_date', { ascending: false });
         
         if (error) throw error;
         
-        const container = document.getElementById('loanList');
-        if (!container) return;
-        
-        if (!loans || loans.length === 0) {
+        if (loans.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <p>No loan applications yet</p>
-                    <p class="subtext">Apply for your first loan today!</p>
+                    <i class="fas fa-file-invoice" style="font-size:3rem;color:#ccc;"></i>
+                    <p>You haven't applied for any loans yet.</p>
+                    <button class="btn btn-primary" onclick="navigateTo('apply-loan')">Apply Now</button>
                 </div>
             `;
             return;
         }
         
         container.innerHTML = loans.map(loan => `
-            <div class="loan-item">
-                <div class="loan-header">
-                    <h3>KES ${loan.amount.toLocaleString()}</h3>
-                    <span class="status-badge status-${loan.status}">${loan.status.toUpperCase()}</span>
-                </div>
-                <div class="loan-details">
-                    <p><strong>Purpose</strong> ${loan.purpose}</p>
-                    <p><strong>Tenure</strong> ${loan.tenure} months</p>
-                    <p><strong>Applied</strong> ${new Date(loan.application_date).toLocaleDateString()}</p>
-                    ${loan.interest_rate ? `<p><strong>Interest</strong> ${loan.interest_rate}%</p>` : ''}
-                    ${loan.approval_date ? `<p><strong>Approved</strong> ${new Date(loan.approval_date).toLocaleDateString()}</p>` : ''}
-                    ${loan.disbursement_date ? `<p><strong>Disbursed</strong> ${new Date(loan.disbursement_date).toLocaleDateString()}</p>` : ''}
-                </div>
-                ${loan.status === 'approved' ? `
-                    <div class="loan-actions">
-                        <button class="btn btn-success" onclick="acceptLoan('${loan.id}')">
-                            <i class="fas fa-check"></i> Accept Offer
-                        </button>
+            <div class="loan-card">
+                <div class="loan-card-header">
+                    <div>
+                        <span class="loan-amount-large">KES ${loan.amount.toLocaleString()}</span>
+                        <span class="status-badge status-${loan.status}">${loan.status}</span>
                     </div>
-                ` : ''}
-                ${loan.status === 'disbursed' || loan.status === 'repaying' ? `
-                    <div class="loan-actions">
-                        <button class="btn btn-secondary" onclick="makePayment('${loan.id}')">
-                            <i class="fas fa-money-bill-wave"></i> Make Payment
-                        </button>
+                    <span class="loan-date">${new Date(loan.application_date).toLocaleDateString()}</span>
+                </div>
+                <div class="loan-card-body">
+                    <div class="loan-detail">
+                        <span>Term:</span>
+                        <strong>${loan.term_months} Months</strong>
                     </div>
-                ` : ''}
+                    <div class="loan-detail">
+                        <span>Monthly Payment:</span>
+                        <strong>KES ${loan.monthly_payment.toLocaleString()}</strong>
+                    </div>
+                    <div class="loan-detail">
+                        <span>Total Repayment:</span>
+                        <strong>KES ${loan.total_amount.toLocaleString()}</strong>
+                    </div>
+                    <div class="loan-detail">
+                        <span>Interest Rate:</span>
+                        <strong>${loan.interest_rate}%</strong>
+                    </div>
+                </div>
             </div>
         `).join('');
         
+        // Add styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .loan-card {
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            .loan-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.75rem;
+            }
+            .loan-amount-large {
+                font-size: 1.25rem;
+                font-weight: 700;
+                margin-right: 0.75rem;
+            }
+            .loan-card-body {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+            .loan-detail {
+                display: flex;
+                justify-content: space-between;
+                font-size: 0.875rem;
+            }
+            .loan-detail span {
+                color: #666;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 2rem;
+            }
+            .empty-state p {
+                margin: 1rem 0;
+                color: #666;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Store loans for filtering
+        window.allLoans = loans;
+        
     } catch (error) {
-        console.error('Error loading loan history:', error);
-        showToast('Error loading loan history', 'error');
+        console.error('❌ Error loading loans:', error);
+        container.innerHTML = '<p class="text-muted">Error loading loans. Please refresh.</p>';
     }
 }
 
-// ============ LOAN ACTIONS ============
-async function acceptLoan(loanId) {
-    if (!confirm('Are you sure you want to accept this loan offer?')) return;
+function filterLoans(filter) {
+    if (!window.allLoans) return;
+    
+    const container = document.getElementById('loansList');
+    let filteredLoans = window.allLoans;
+    
+    if (filter !== 'all') {
+        filteredLoans = window.allLoans.filter(l => l.status === filter);
+    }
+    
+    // Re-render with filtered loans
+    // (Reuse the rendering logic from loadMyLoans)
+    // For simplicity, we'll reload the page with filter
+    loadMyLoans();
+}
+
+// ============================================
+// REPAYMENTS
+// ============================================
+
+async function loadRepayments() {
+    const container = document.getElementById('repaymentsList');
+    container.innerHTML = '<p class="text-muted">Loading repayments...</p>';
     
     try {
-        const { error } = await supabaseClient
-            .from('loans')
-            .update({ 
-                status: 'disbursed',
-                disbursement_date: new Date().toISOString()
-            })
-            .eq('id', loanId);
+        const { data: repayments, error } = await window.supabase
+            .from('repayments')
+            .select('*, loans(amount, term_months)')
+            .eq('user_id', currentUser.id)
+            .order('payment_date', { ascending: false });
         
         if (error) throw error;
         
-        showToast('Loan accepted! Funds will be disbursed shortly.', 'success');
-        await loadDashboardStats();
-        await loadLoanHistory();
+        if (repayments.length === 0) {
+            container.innerHTML = '<p class="text-muted">No repayment history yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = repayments.map(r => `
+            <div class="repayment-item">
+                <div class="repayment-info">
+                    <span class="repayment-amount">KES ${r.amount.toLocaleString()}</span>
+                    <span class="repayment-date">${new Date(r.payment_date).toLocaleDateString()}</span>
+                </div>
+                <div>
+                    <span class="status-badge status-${r.status}">${r.status}</span>
+                    <span class="repayment-method">${r.payment_method}</span>
+                </div>
+            </div>
+        `).join('');
+        
+        // Add styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .repayment-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            .repayment-item:last-child {
+                border-bottom: none;
+            }
+            .repayment-info {
+                display: flex;
+                flex-direction: column;
+            }
+            .repayment-amount {
+                font-weight: 600;
+            }
+            .repayment-date {
+                font-size: 0.75rem;
+                color: #999;
+            }
+            .repayment-method {
+                font-size: 0.75rem;
+                color: #666;
+                margin-left: 0.5rem;
+            }
+        `;
+        document.head.appendChild(style);
         
     } catch (error) {
-        console.error('Error accepting loan:', error);
-        showToast('Error accepting loan', 'error');
+        console.error('❌ Error loading repayments:', error);
+        container.innerHTML = '<p class="text-muted">Error loading repayments. Please refresh.</p>';
     }
 }
 
-function makePayment(loanId) {
-    showToast('Payment feature coming soon! You can make payments via M-Pesa.', 'info');
-}
+// ============================================
+// LOAN APPLICATION
+// ============================================
 
-// ============ LOAN CALCULATOR ============
 function setupLoanCalculator() {
     const amountInput = document.getElementById('loanAmount');
-    const tenureSelect = document.getElementById('loanTenure');
+    const termSelect = document.getElementById('loanTerm');
     
-    if (amountInput && tenureSelect) {
-        [amountInput, tenureSelect].forEach(input => {
-            input.addEventListener('change', calculateLoanSummary);
-            input.addEventListener('input', calculateLoanSummary);
-        });
+    function calculateLoan() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const term = parseInt(termSelect.value) || 0;
+        
+        if (amount > 0 && term > 0) {
+            const interestRate = 0.05; // 5%
+            const totalAmount = amount * (1 + interestRate);
+            const monthlyPayment = totalAmount / term;
+            
+            document.getElementById('totalRepayment').textContent = `KES ${totalAmount.toLocaleString()}`;
+            document.getElementById('monthlyPayment').textContent = `KES ${monthlyPayment.toLocaleString()}`;
+        } else {
+            document.getElementById('totalRepayment').textContent = 'KES 0';
+            document.getElementById('monthlyPayment').textContent = 'KES 0';
+        }
     }
-}
-
-function calculateLoanSummary() {
-    const amount = parseFloat(document.getElementById('loanAmount').value);
-    const tenure = parseInt(document.getElementById('loanTenure').value);
-    const summaryDiv = document.getElementById('loanSummary');
     
-    if (amount >= 10000 && tenure) {
-        const interestRate = 0.05;
-        const totalInterest = amount * interestRate * (tenure / 12);
-        const totalRepayment = amount + totalInterest;
-        const monthlyPayment = totalRepayment / tenure;
-        
-        const summaryPrincipal = document.getElementById('summaryPrincipal');
-        const summaryInterest = document.getElementById('summaryInterest');
-        const summaryTotal = document.getElementById('summaryTotal');
-        const summaryMonthly = document.getElementById('summaryMonthly');
-        
-        if (summaryPrincipal) summaryPrincipal.textContent = `KES ${amount.toLocaleString()}`;
-        if (summaryInterest) summaryInterest.textContent = `KES ${totalInterest.toFixed(2).toLocaleString()}`;
-        if (summaryTotal) summaryTotal.textContent = `KES ${totalRepayment.toFixed(2).toLocaleString()}`;
-        if (summaryMonthly) summaryMonthly.textContent = `KES ${monthlyPayment.toFixed(2).toLocaleString()}`;
-        
-        if (summaryDiv) summaryDiv.style.display = 'block';
-    } else {
-        if (summaryDiv) summaryDiv.style.display = 'none';
-    }
+    amountInput.addEventListener('input', calculateLoan);
+    termSelect.addEventListener('change', calculateLoan);
 }
 
-// ============ EDIT PROFILE ============
-function editProfile() {
-    const modal = document.getElementById('editProfileModal');
-    const editFullName = document.getElementById('editFullName');
-    const editPhone = document.getElementById('editPhone');
-    const editOccupation = document.getElementById('editOccupation');
-    const editMonthlyIncome = document.getElementById('editMonthlyIncome');
-    
-    if (editFullName) editFullName.value = userData.full_name || '';
-    if (editPhone) editPhone.value = userData.phone || '';
-    if (editOccupation) editOccupation.value = userData.occupation || '';
-    if (editMonthlyIncome) editMonthlyIncome.value = userData.monthly_income || '';
-    
-    if (modal) modal.style.display = 'flex';
-}
-
-function closeEditProfile() {
-    const modal = document.getElementById('editProfileModal');
-    if (modal) modal.style.display = 'none';
-}
-
-async function updateProfile(event) {
+async function applyForLoan(event) {
     event.preventDefault();
     
-    const fullName = document.getElementById('editFullName')?.value?.trim();
-    const phone = document.getElementById('editPhone')?.value?.trim();
-    const occupation = document.getElementById('editOccupation')?.value?.trim();
-    const monthlyIncome = document.getElementById('editMonthlyIncome')?.value;
+    const amount = parseFloat(document.getElementById('loanAmount').value);
+    const term = parseInt(document.getElementById('loanTerm').value);
+    const purpose = document.getElementById('loanPurpose').value;
     
-    if (!fullName || !phone) {
-        showToast('Please fill in all required fields', 'error');
+    if (amount < 1000) {
+        showNotification('Minimum loan amount is KES 1,000', 'error');
+        return;
+    }
+    
+    if (!term) {
+        showNotification('Please select a repayment period', 'error');
         return;
     }
     
     try {
-        const { error } = await supabaseClient
-            .from('users')
-            .update({
-                full_name: fullName,
-                phone: phone,
-                occupation: occupation || null,
-                monthly_income: monthlyIncome ? parseFloat(monthlyIncome) : null
+        // Calculate loan details
+        const interestRate = 5.0;
+        const totalAmount = amount * (1 + interestRate / 100);
+        const monthlyPayment = totalAmount / term;
+        
+        // Submit loan application
+        const { data, error } = await window.supabase
+            .from('loans')
+            .insert({
+                user_id: currentUser.id,
+                amount: amount,
+                interest_rate: interestRate,
+                term_months: term,
+                total_amount: totalAmount,
+                monthly_payment: monthlyPayment,
+                purpose: purpose,
+                status: 'pending'
             })
-            .eq('id', dashboardUser.id);
+            .select();
         
         if (error) throw error;
         
-        showToast('Profile updated successfully!', 'success');
-        closeEditProfile();
-        await loadUserProfile();
+        // Show confirmation
+        document.getElementById('confAmount').textContent = `KES ${amount.toLocaleString()}`;
+        document.getElementById('confTerm').textContent = `${term} Months`;
+        document.getElementById('confMonthly').textContent = `KES ${monthlyPayment.toLocaleString()}`;
+        document.getElementById('confTotal').textContent = `KES ${totalAmount.toLocaleString()}`;
+        
+        document.getElementById('loanConfirmationModal').classList.add('show');
+        
+        // Reset form
+        document.getElementById('loanApplicationForm').reset();
+        document.getElementById('totalRepayment').textContent = 'KES 0';
+        document.getElementById('monthlyPayment').textContent = 'KES 0';
+        
+        // Refresh dashboard data
+        await loadDashboardData();
+        
+        console.log('✅ Loan application submitted');
         
     } catch (error) {
-        console.error('Error updating profile:', error);
-        showToast('Error updating profile', 'error');
+        console.error('❌ Error applying for loan:', error);
+        showNotification('Error submitting application. Please try again.', 'error');
     }
 }
 
-// ============ REFRESH ============
-function refreshLoans() {
-    loadLoanHistory();
-    loadDashboardStats();
-    showToast('Refreshed!', 'success');
-}
+// ============================================
+// PROFILE UPDATE
+// ============================================
 
-// ============ TOAST NOTIFICATION ============
-function showToast(message, type = 'info') {
-    const container = document.querySelector('.toast-container') || createToastContainer();
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
+async function updateProfile(event) {
+    event.preventDefault();
     
+    const profileData = {
+        full_name: document.getElementById('profileFullName').value.trim(),
+        phone: document.getElementById('profilePhone').value.trim(),
+        date_of_birth: document.getElementById('profileDob').value,
+        gender: document.getElementById('profileGender').value,
+        employment_status: document.getElementById('profileEmploymentStatus').value,
+        monthly_income: parseFloat(document.getElementById('profileMonthlyIncome').value) || 0,
+        address: document.getElementById('profileAddress').value.trim()
+    };
+    
+    try {
+        const { error } = await window.supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', currentUser.id);
+        
+        if (error) throw error;
+        
+        showNotification('Profile updated successfully!', 'success');
+        
+        // Reload profile
+        await loadUserProfile();
+        
+        // Update sidebar name
+        document.getElementById('userName').textContent = profileData.full_name;
+        
+    } catch (error) {
+        console.error('❌ Error updating profile:', error);
+        showNotification('Error updating profile. Please try again.', 'error');
+    }
+}
+
+// ============================================
+// AVATAR UPLOAD
+// ============================================
+
+async function uploadAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('Image size must be less than 2MB', 'error');
+        return;
+    }
+    
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `avatars/${currentUser.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await window.supabase.storage
+            .from('avatars')
+            .upload(fileName, file, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = window.supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+        
+        // Update profile with avatar URL
+        const { error: updateError } = await window.supabase
+            .from('profiles')
+            .update({ avatar_url: publicUrl })
+            .eq('id', currentUser.id);
+        
+        if (updateError) throw updateError;
+        
+        document.getElementById('profileAvatar').src = publicUrl;
+        showNotification('Avatar updated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Error uploading avatar:', error);
+        showNotification('Error uploading avatar. Please try again.', 'error');
+    }
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+async function showNotifications() {
+    try {
+        const { data: notifications, error } = await window.supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(10);
+        
+        if (error) throw error;
+        
+        // Show notifications in a modal or dropdown
+        // For simplicity, we'll just show a notification
+        if (notifications.length > 0) {
+            const unread = notifications.filter(n => !n.is_read).length;
+            showNotification(`You have ${unread} unread notifications`, 'info');
+            
+            // Mark as read
+            await window.supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('user_id', currentUser.id)
+                .eq('is_read', false);
+                
+            document.getElementById('notificationBadge').textContent = '0';
+        } else {
+            showNotification('No new notifications', 'info');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading notifications:', error);
+    }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function generateReport(type) {
+    showNotification(`Generating ${type} report...`, 'info');
+    // Implement report generation logic
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
+        showNotification(`${type} report ready for download`, 'success');
+    }, 2000);
 }
 
-function createToastContainer() {
-    const container = document.createElement('div');
-    container.className = 'toast-container';
-    document.body.appendChild(container);
-    return container;
-}
+// ============================================
+// EXPOSE GLOBALLY
+// ============================================
 
-// ============ CLOSE MODALS ON OUTSIDE CLICK ============
-window.onclick = function(event) {
-    const editModal = document.getElementById('editProfileModal');
-    if (event.target === editModal) {
-        closeEditProfile();
-    }
-    const kycModal = document.getElementById('kycModal');
-    if (event.target === kycModal) {
-        closeKYCModal();
-    }
-};
-
-// ============ EXPOSE FUNCTIONS GLOBALLY ============
-window.startKYC = startKYC;
-window.closeKYCModal = closeKYCModal;
-window.previewKYCDocument = previewKYCDocument;
-window.submitKYC = submitKYC;
-window.submitLoanApplication = submitLoanApplication;
-window.acceptLoan = acceptLoan;
-window.makePayment = makePayment;
-window.editProfile = editProfile;
-window.closeEditProfile = closeEditProfile;
+window.navigateTo = navigateTo;
+window.applyForLoan = applyForLoan;
 window.updateProfile = updateProfile;
-window.refreshLoans = refreshLoans;
-window.showToast = showToast;
+window.uploadAvatar = uploadAvatar;
+window.showNotifications = showNotifications;
+window.toggleSidebar = toggleSidebar;
+window.closeModal = closeModal;
+window.generateReport = generateReport;
+window.filterLoans = filterLoans;
+
+console.log('✅ dashboard.js loaded successfully');
