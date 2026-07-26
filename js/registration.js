@@ -1,13 +1,343 @@
+// Registration Form Handling
+let currentStep = 1;
+const totalSteps = 3;
+
+// Initialize registration form
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Registration page loaded');
+    updateProgressBar(1);
+    setupPasswordStrength();
+    setupFormValidation();
+});
+
+// Step navigation
+function goToStep(step) {
+    if (step > currentStep) {
+        // Going forward - validate current step
+        if (!validateStep(currentStep)) {
+            return;
+        }
+    }
+    
+    currentStep = step;
+    showStep(currentStep);
+    updateProgressBar(currentStep);
+    
+    // Scroll to top of form
+    const form = document.getElementById('registrationForm');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function showStep(step) {
+    // Hide all steps
+    for (let i = 1; i <= totalSteps; i++) {
+        const stepElement = document.getElementById(`step${i}`);
+        if (stepElement) {
+            stepElement.style.display = i === step ? 'block' : 'none';
+        }
+    }
+}
+
+function updateProgressBar(step) {
+    const progressSteps = document.querySelectorAll('.progress-step');
+    const progressLines = document.querySelectorAll('.progress-line');
+    
+    progressSteps.forEach((el, index) => {
+        const stepNum = index + 1;
+        el.classList.remove('active', 'completed');
+        
+        if (stepNum === step) {
+            el.classList.add('active');
+        } else if (stepNum < step) {
+            el.classList.add('completed');
+        }
+    });
+    
+    progressLines.forEach((el, index) => {
+        const lineNum = index + 1;
+        el.classList.remove('completed');
+        
+        if (lineNum < step) {
+            el.classList.add('completed');
+        }
+    });
+}
+
+// Validate current step
+function validateStep(step) {
+    const stepElement = document.getElementById(`step${step}`);
+    if (!stepElement) return false;
+    
+    const inputs = stepElement.querySelectorAll('input[required], select[required]');
+    let isValid = true;
+    
+    inputs.forEach(input => {
+        // Remove existing error
+        const existingError = input.parentElement.querySelector('.field-error');
+        if (existingError) existingError.remove();
+        input.classList.remove('error');
+        
+        if (!input.value.trim()) {
+            input.classList.add('error');
+            showFieldError(input, 'This field is required');
+            isValid = false;
+            return;
+        }
+        
+        // Additional validation based on input type
+        if (input.type === 'email' && input.value) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(input.value)) {
+                input.classList.add('error');
+                showFieldError(input, 'Please enter a valid email address');
+                isValid = false;
+            }
+        }
+        
+        if (input.type === 'tel' && input.value) {
+            const phoneRegex = /^[0-9]{10,12}$/;
+            if (!phoneRegex.test(input.value.replace(/\s/g, ''))) {
+                input.classList.add('error');
+                showFieldError(input, 'Please enter a valid phone number (10-12 digits)');
+                isValid = false;
+            }
+        }
+        
+        if (input.id === 'idNumber' && input.value) {
+            const idRegex = /^[0-9]{5,8}$/;
+            if (!idRegex.test(input.value)) {
+                input.classList.add('error');
+                showFieldError(input, 'Please enter a valid ID number (5-8 digits)');
+                isValid = false;
+            }
+        }
+        
+        if (input.type === 'date' && input.value) {
+            const birthDate = new Date(input.value);
+            const minDate = new Date('2006-01-01');
+            if (birthDate > minDate) {
+                input.classList.add('error');
+                showFieldError(input, 'You must be at least 18 years old');
+                isValid = false;
+            }
+        }
+    });
+    
+    // Special validation for step 3 (passwords and files)
+    if (step === 3) {
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirmPassword');
+        
+        // Remove existing errors
+        [password, confirmPassword].forEach(input => {
+            const existingError = input.parentElement.querySelector('.field-error');
+            if (existingError) existingError.remove();
+            input.classList.remove('error');
+        });
+        
+        if (password.value && password.value.length < 8) {
+            password.classList.add('error');
+            showFieldError(password, 'Password must be at least 8 characters');
+            isValid = false;
+        }
+        
+        if (password.value && confirmPassword.value && password.value !== confirmPassword.value) {
+            confirmPassword.classList.add('error');
+            showFieldError(confirmPassword, 'Passwords do not match');
+            isValid = false;
+        }
+        
+        const idDocument = document.getElementById('idDocument');
+        if (!idDocument.files || idDocument.files.length === 0) {
+            idDocument.classList.add('error');
+            const container = idDocument.closest('.form-group');
+            const existingError = container.querySelector('.field-error');
+            if (!existingError) {
+                const error = document.createElement('small');
+                error.className = 'field-error';
+                error.style.color = '#f44336';
+                error.style.display = 'block';
+                error.style.marginTop = '0.25rem';
+                error.textContent = 'Please upload your ID document';
+                container.appendChild(error);
+            }
+            isValid = false;
+        }
+        
+        const termsAccepted = document.getElementById('termsAccepted');
+        if (!termsAccepted.checked) {
+            termsAccepted.classList.add('error');
+            const container = termsAccepted.closest('.form-group');
+            const existingError = container.querySelector('.field-error');
+            if (!existingError) {
+                const error = document.createElement('small');
+                error.className = 'field-error';
+                error.style.color = '#f44336';
+                error.style.display = 'block';
+                error.style.marginTop = '0.25rem';
+                error.textContent = 'You must accept the terms and conditions';
+                container.appendChild(error);
+            }
+            isValid = false;
+        }
+    }
+    
+    if (!isValid) {
+        showNotification('Please fill in all required fields correctly', 'error');
+    }
+    
+    return isValid;
+}
+
+// Show field error
+function showFieldError(input, message) {
+    const existingError = input.parentElement.querySelector('.field-error');
+    if (existingError) existingError.remove();
+    
+    const error = document.createElement('small');
+    error.className = 'field-error';
+    error.style.color = '#f44336';
+    error.style.display = 'block';
+    error.style.marginTop = '0.25rem';
+    error.textContent = message;
+    
+    input.parentElement.appendChild(error);
+}
+
+// Setup form validation
+function setupFormValidation() {
+    // Real-time validation for email
+    document.getElementById('email')?.addEventListener('blur', function() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const existingError = this.parentElement.querySelector('.field-error');
+        if (existingError) existingError.remove();
+        
+        if (this.value && !emailRegex.test(this.value)) {
+            this.classList.add('error');
+            showFieldError(this, 'Please enter a valid email address');
+        } else {
+            this.classList.remove('error');
+        }
+    });
+    
+    // Real-time validation for phone
+    document.getElementById('phone')?.addEventListener('blur', function() {
+        const phoneRegex = /^[0-9]{10,12}$/;
+        const existingError = this.parentElement.querySelector('.field-error');
+        if (existingError) existingError.remove();
+        
+        if (this.value && !phoneRegex.test(this.value.replace(/\s/g, ''))) {
+            this.classList.add('error');
+            showFieldError(this, 'Please enter a valid phone number');
+        } else {
+            this.classList.remove('error');
+        }
+    });
+}
+
+// Password strength indicator
+function setupPasswordStrength() {
+    const passwordInput = document.getElementById('password');
+    if (!passwordInput) return;
+    
+    passwordInput.addEventListener('input', function() {
+        const strength = checkPasswordStrength(this.value);
+        const bar = document.querySelector('.strength-bar');
+        const text = document.querySelector('.strength-text');
+        
+        if (bar) {
+            bar.style.background = `linear-gradient(to right, ${strength.color} ${strength.score}%, #e0e0e0 ${strength.score}%)`;
+        }
+        
+        if (text) {
+            text.textContent = strength.message;
+            text.style.color = strength.color;
+        }
+    });
+}
+
+function checkPasswordStrength(password) {
+    let score = 0;
+    let message = 'Very Weak';
+    let color = '#f44336';
+    
+    if (password.length >= 8) score += 25;
+    if (password.length >= 12) score += 25;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 25;
+    if (/\d/.test(password)) score += 12.5;
+    if (/[^a-zA-Z0-9]/.test(password)) score += 12.5;
+    
+    if (score >= 80) {
+        message = 'Strong';
+        color = '#4caf50';
+    } else if (score >= 60) {
+        message = 'Good';
+        color = '#ff9800';
+    } else if (score >= 40) {
+        message = 'Fair';
+        color = '#ffc107';
+    }
+    
+    return { score, message, color };
+}
+
+// File preview
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            
+            // Remove error state if it exists
+            input.classList.remove('error');
+            const container = input.closest('.form-group');
+            const existingError = container.querySelector('.field-error');
+            if (existingError) existingError.remove();
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function previewFile(input, previewId) {
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        preview.innerHTML = `
+            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:#e8f5e9;border-radius:8px;margin-top:0.5rem;">
+                <i class="fas fa-file-pdf" style="color:#f44336;"></i>
+                <span>${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>
+                <i class="fas fa-check-circle" style="color:#4caf50;margin-left:auto;"></i>
+            </div>
+        `;
+        preview.style.display = 'block';
+        
+        // Remove error state if it exists
+        input.classList.remove('error');
+        const container = input.closest('.form-group');
+        const existingError = container.querySelector('.field-error');
+        if (existingError) existingError.remove();
+    }
+}
+
 // Handle form submission
 async function handleRegistration(event) {
     event.preventDefault();
+    console.log('Registration form submitted');
     
     // Validate final step
     if (!validateStep(3)) {
         return;
     }
     
-    const submitBtn = document.querySelector('#registrationForm button[type="submit"]');
+    const submitBtn = document.getElementById('registerSubmitBtn');
     const btnText = document.getElementById('registerBtnText');
     const spinner = submitBtn.querySelector('.fa-spinner');
     
@@ -32,8 +362,10 @@ async function handleRegistration(event) {
         const password = document.getElementById('password').value;
         const marketingConsent = document.getElementById('marketingConsent').checked;
         
+        console.log('Form data collected:', { email, fullName, phone });
+        
         // Register user with Supabase
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        const { data: authData, error: authError } = await window.supabase.auth.signUp({
             email: email,
             password: password,
             options: {
@@ -44,12 +376,17 @@ async function handleRegistration(event) {
             }
         });
         
-        if (authError) throw authError;
+        if (authError) {
+            console.error('Auth error:', authError);
+            throw authError;
+        }
+        
+        console.log('Auth success:', authData);
         
         if (authData.user) {
             // Profile will be created automatically by trigger
             // But we need to update it with additional fields
-            const { error: profileError } = await supabase
+            const { error: profileError } = await window.supabase
                 .from('profiles')
                 .update({
                     id_number: idNumber,
@@ -64,14 +401,16 @@ async function handleRegistration(event) {
                 })
                 .eq('id', authData.user.id);
             
-            if (profileError) throw profileError;
+            if (profileError) {
+                console.error('Profile update error:', profileError);
+                throw profileError;
+            }
             
             // Upload documents if provided
             const profilePicture = document.getElementById('profilePicture');
             const idDocument = document.getElementById('idDocument');
             const proofOfIncome = document.getElementById('proofOfIncome');
             
-            // Upload documents
             const uploadPromises = [];
             
             if (profilePicture.files && profilePicture.files[0]) {
@@ -86,7 +425,9 @@ async function handleRegistration(event) {
                 uploadPromises.push(uploadDocument(authData.user.id, 'proof_of_income', proofOfIncome.files[0]));
             }
             
-            await Promise.all(uploadPromises);
+            if (uploadPromises.length > 0) {
+                await Promise.all(uploadPromises);
+            }
             
             // Show success message
             showNotification('Account created successfully! Please check your email for verification.', 'success');
@@ -101,10 +442,12 @@ async function handleRegistration(event) {
         console.error('Registration error:', error);
         
         let errorMessage = 'Registration failed. Please try again.';
-        if (error.message.includes('User already registered')) {
+        if (error.message && error.message.includes('User already registered')) {
             errorMessage = 'This email is already registered. Please login instead.';
-        } else if (error.message.includes('Password should be at least')) {
+        } else if (error.message && error.message.includes('Password should be at least')) {
             errorMessage = 'Password must be at least 6 characters long.';
+        } else if (error.message) {
+            errorMessage = error.message;
         }
         
         showNotification(errorMessage, 'error');
@@ -119,27 +462,34 @@ async function handleRegistration(event) {
 // Upload document to Supabase Storage
 async function uploadDocument(userId, documentType, file) {
     try {
+        console.log(`Uploading ${documentType} for user ${userId}`);
+        
         // Create folder structure
         const fileExt = file.name.split('.').pop();
         const fileName = `${userId}/${documentType}_${Date.now()}.${fileExt}`;
         
         // Upload file
-        const { data, error } = await supabase.storage
+        const { data, error } = await window.supabase.storage
             .from('documents')
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: false
             });
             
-        if (error) throw error;
+        if (error) {
+            console.error('Storage upload error:', error);
+            throw error;
+        }
+        
+        console.log('File uploaded:', data);
         
         // Get public URL
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = window.supabase.storage
             .from('documents')
             .getPublicUrl(fileName);
             
         // Save document reference in database
-        const { error: docError } = await supabase
+        const { error: docError } = await window.supabase
             .from('documents')
             .insert([
                 {
@@ -150,7 +500,10 @@ async function uploadDocument(userId, documentType, file) {
                 }
             ]);
             
-        if (docError) throw docError;
+        if (docError) {
+            console.error('Document record error:', docError);
+            throw docError;
+        }
             
         return publicUrl;
     } catch (error) {
@@ -158,3 +511,51 @@ async function uploadDocument(userId, documentType, file) {
         throw error;
     }
 }
+
+// Modal functions
+function showTerms() {
+    const modal = document.getElementById('termsModal');
+    if (modal) modal.classList.add('show');
+}
+
+function closeTermsModal() {
+    const modal = document.getElementById('termsModal');
+    if (modal) modal.classList.remove('show');
+}
+
+function showPrivacy() {
+    const modal = document.getElementById('privacyModal');
+    if (modal) modal.classList.add('show');
+}
+
+function closePrivacyModal() {
+    const modal = document.getElementById('privacyModal');
+    if (modal) modal.classList.remove('show');
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('show');
+    }
+});
+
+// Close modals with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.show').forEach(modal => {
+            modal.classList.remove('show');
+        });
+    }
+});
+
+// Make functions globally available
+window.goToStep = goToStep;
+window.validateStep = validateStep;
+window.previewImage = previewImage;
+window.previewFile = previewFile;
+window.handleRegistration = handleRegistration;
+window.showTerms = showTerms;
+window.closeTermsModal = closeTermsModal;
+window.showPrivacy = showPrivacy;
+window.closePrivacyModal = closePrivacyModal;
