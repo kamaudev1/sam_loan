@@ -23,14 +23,18 @@ async function checkAuth() {
         if (dashboardLink) dashboardLink.style.display = 'inline';
         
         // Check if user is admin
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-            
-        if (profile && profile.role === 'admin') {
-            if (adminLink) adminLink.style.display = 'inline';
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+                
+            if (profile && profile.role === 'admin') {
+                if (adminLink) adminLink.style.display = 'inline';
+            }
+        } catch (error) {
+            console.error('Error fetching profile:', error);
         }
         
         if (authBtn) {
@@ -67,18 +71,39 @@ async function handleLogout() {
 
 // Show notification
 function showNotification(message, type = 'info') {
+    // Check if notification container exists
+    let container = document.querySelector('.notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'notification-container';
+        document.body.appendChild(container);
+    }
+    
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-        <span>${message}</span>
-    `;
-    document.body.appendChild(notification);
     
+    const iconMap = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        info: 'fa-info-circle'
+    };
+    
+    notification.innerHTML = `
+        <i class="fas ${iconMap[type] || iconMap.info}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:#999;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    container.appendChild(notification);
+    
+    // Show with animation
     setTimeout(() => {
         notification.classList.add('show');
-    }, 100);
+    }, 10);
     
+    // Auto remove after 5 seconds
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -89,3 +114,8 @@ function showNotification(message, type = 'info') {
 
 // Initialize auth check on page load
 document.addEventListener('DOMContentLoaded', checkAuth);
+
+// Make functions globally available
+window.showNotification = showNotification;
+window.handleLogout = handleLogout;
+window.checkAuth = checkAuth;
