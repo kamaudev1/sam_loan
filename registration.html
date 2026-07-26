@@ -260,12 +260,18 @@
         
         <!-- Debug: Check if functions are loaded -->
         <script>
-            console.log('Checking if functions are available:');
-            console.log('goToStep:', typeof goToStep);
+            console.log('=== 🔍 Debug Info ===');
+            console.log('Supabase library loaded:', typeof supabase !== 'undefined');
+            console.log('window.supabase:', window.supabase ? '✅ Available' : '❌ Not available');
             console.log('handleRegistration:', typeof handleRegistration);
+            console.log('goToStep:', typeof goToStep);
             console.log('previewImage:', typeof previewImage);
             console.log('showTerms:', typeof showTerms);
-            console.log('window.supabase:', window.supabase ? 'Available' : 'Not available');
+            
+            // Test Supabase connection
+            if (window.testSupabaseConnection) {
+                window.testSupabaseConnection();
+            }
         </script>
     </div>
 </body>
