@@ -3,57 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SAM Loans</title>
+    <title>Login - Sam Loans</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/auth.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="auth-page">
+        <!-- Animated Background -->
+        <div class="auth-bg">
+            <div class="bg-shape shape-1"></div>
+            <div class="bg-shape shape-2"></div>
+            <div class="bg-shape shape-3"></div>
+            <div class="bg-shape shape-4"></div>
+            <div class="bg-grid"></div>
+        </div>
+
         <!-- Header -->
         <nav class="auth-nav">
             <div class="container">
                 <a href="index.html" class="auth-brand">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <span>SAM Loans</span>
+                    <div class="brand-icon">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <div class="brand-text">
+                        <span>Sam Loans</span>
+                        <small>Financial Solutions</small>
+                    </div>
                 </a>
-                <p>Don't have an account? <a href="registration.html">Register</a></p>
+                <div class="nav-actions">
+                    <p>Don't have an account? <a href="registration.html">Register</a></p>
+                </div>
             </div>
         </nav>
 
-        <!-- Login Form -->
+        <!-- Login Container -->
         <div class="auth-container">
-            <div class="auth-card login-card">
+            <div class="auth-card login-card animate-slide-up">
+                <!-- Card Header -->
                 <div class="auth-header">
+                    <div class="header-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Secure Login</span>
+                    </div>
                     <h1>Welcome Back</h1>
-                    <p>Sign in to access your loan account</p>
+                    <p>Sign in to access your loan account and manage your finances</p>
                 </div>
 
                 <!-- Social Login Options -->
                 <div class="social-login">
                     <button type="button" class="social-btn google-btn" onclick="handleGoogleLogin()">
-                        <i class="fab fa-google"></i>
+                        <div class="social-icon">
+                            <i class="fab fa-google"></i>
+                        </div>
                         <span>Continue with Google</span>
                     </button>
                     <div class="divider">
-                        <span>OR</span>
+                        <span>Or continue with email</span>
                     </div>
                 </div>
 
+                <!-- Login Form -->
                 <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
-                    <div class="form-group">
-                        <label><i class="fas fa-envelope"></i> Email Address *</label>
-                        <input type="email" id="loginEmail" placeholder="Enter your email" required>
-                        <div class="input-icon">
-                            <i class="fas fa-envelope"></i>
+                    <div class="form-group floating-group">
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope input-icon"></i>
+                            <input type="email" id="loginEmail" placeholder=" " required>
+                            <label for="loginEmail">Email Address</label>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label><i class="fas fa-lock"></i> Password *</label>
-                        <div class="password-input">
-                            <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                    <div class="form-group floating-group">
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="loginPassword" placeholder=" " required>
+                            <label for="loginPassword">Password</label>
                             <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -61,86 +87,188 @@
                     </div>
 
                     <div class="form-options">
-                        <label class="remember-me">
+                        <label class="checkbox-container">
                             <input type="checkbox" id="rememberMe">
-                            <span>Remember me</span>
+                            <span class="checkmark"></span>
+                            <span class="checkbox-label">Remember me</span>
                         </label>
-                        <a href="#" class="forgot-password" onclick="showForgotPassword()">Forgot Password?</a>
+                        <a href="#" class="forgot-password" onclick="showForgotPassword()">
+                            <i class="fas fa-key"></i> Forgot Password?
+                        </a>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-full">
-                        <i class="fas fa-spinner fa-spin" style="display:none;"></i>
-                        <span id="loginBtnText">Sign In</span>
+                    <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
+                        <span class="btn-content">
+                            <span class="btn-text">Sign In</span>
+                            <i class="fas fa-arrow-right btn-icon"></i>
+                        </span>
+                        <span class="btn-loading" style="display:none;">
+                            <i class="fas fa-spinner fa-spin"></i> Signing in...
+                        </span>
                     </button>
                 </form>
 
-                <!-- Additional Links -->
+                <!-- Footer -->
                 <div class="auth-footer">
-                    <p>By signing in, you agree to our <a href="#" onclick="showTerms(); return false;">Terms of Service</a></p>
                     <div class="trust-badges">
                         <span><i class="fas fa-shield-alt"></i> Secure</span>
                         <span><i class="fas fa-lock"></i> Encrypted</span>
                         <span><i class="fas fa-check-circle"></i> Trusted</span>
+                        <span><i class="fas fa-clock"></i> 24/7</span>
                     </div>
+                    <p class="terms-text">
+                        By signing in, you agree to our <a href="#" onclick="showTerms(); return false;">Terms of Service</a> 
+                        and <a href="#" onclick="showPrivacy(); return false;">Privacy Policy</a>
+                    </p>
                 </div>
             </div>
 
             <!-- Feature Cards -->
-            <div class="auth-features">
+            <div class="auth-features animate-slide-up delay-1">
                 <div class="feature-box">
-                    <i class="fas fa-clock"></i>
-                    <h3>24/7 Access</h3>
-                    <p>Manage your loans anytime, anywhere</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>24/7 Access</h3>
+                        <p>Manage your loans anytime, anywhere</p>
+                    </div>
                 </div>
                 <div class="feature-box">
-                    <i class="fas fa-coins"></i>
-                    <h3>Quick Loans</h3>
-                    <p>Get approved in under 24 hours</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Quick Loans</h3>
+                        <p>Get approved in under 24 hours</p>
+                    </div>
                 </div>
                 <div class="feature-box">
-                    <i class="fas fa-headset"></i>
-                    <h3>24/7 Support</h3>
-                    <p>Our team is always here to help</p>
+                    <div class="feature-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>24/7 Support</h3>
+                        <p>Our team is always here to help</p>
+                    </div>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Flexible Plans</h3>
+                        <p>Customized loan solutions for you</p>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Forgot Password Modal -->
         <div id="forgotPasswordModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeForgotPassword()">&times;</span>
-                <h2>Reset Password</h2>
-                <p>Enter your email address and we'll send you instructions to reset your password.</p>
-                <form id="forgotPasswordForm" onsubmit="handleForgotPassword(event)">
-                    <div class="form-group">
-                        <label><i class="fas fa-envelope"></i> Email Address</label>
-                        <input type="email" id="resetEmail" placeholder="Enter your email" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-full">Send Reset Link</button>
-                </form>
+            <div class="modal-content animate-scale">
+                <div class="modal-header">
+                    <h2><i class="fas fa-key"></i> Reset Password</h2>
+                    <button class="modal-close" onclick="closeForgotPassword()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Enter your email address and we'll send you instructions to reset your password.</p>
+                    <form id="forgotPasswordForm" onsubmit="handleForgotPassword(event)">
+                        <div class="form-group floating-group">
+                            <div class="input-wrapper">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input type="email" id="resetEmail" placeholder=" " required>
+                                <label for="resetEmail">Email Address</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <i class="fas fa-paper-plane"></i> Send Reset Link
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 
         <!-- Terms Modal -->
         <div id="termsModal" class="modal">
-            <div class="modal-content terms-content">
-                <span class="close" onclick="closeTermsModal()">&times;</span>
-                <h2>Terms and Conditions</h2>
-                <div class="terms-text">
-                    <h3>1. Loan Agreement</h3>
-                    <p>By accepting these terms, you agree to repay the loan amount plus interest as per the agreed schedule.</p>
-                    <h3>2. Interest Rates</h3>
-                    <p>Interest rates are fixed at 5% per annum for all soft loans.</p>
-                    <h3>3. Repayment</h3>
-                    <p>Repayments must be made monthly via M-Pesa or bank transfer.</p>
-                    <h3>4. Default</h3>
-                    <p>Failure to repay may result in additional charges and legal action.</p>
-                    <h3>5. Data Privacy</h3>
-                    <p>Your data is protected and will only be used for loan processing purposes.</p>
+            <div class="modal-content animate-scale terms-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-file-contract"></i> Terms and Conditions</h2>
+                    <button class="modal-close" onclick="closeTermsModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <button class="btn btn-primary" onclick="closeTermsModal()">I Understand</button>
+                <div class="modal-body">
+                    <div class="terms-text">
+                        <div class="terms-section">
+                            <h3><i class="fas fa-handshake"></i> 1. Loan Agreement</h3>
+                            <p>By accepting these terms, you agree to repay the loan amount plus interest as per the agreed schedule. All loans are subject to approval based on our assessment criteria.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-percent"></i> 2. Interest Rates</h3>
+                            <p>Interest rates are fixed at 12.5% per annum for all loans. The total interest payable will be clearly stated in your loan agreement before acceptance.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-calendar-check"></i> 3. Repayment</h3>
+                            <p>Repayments must be made monthly via M-Pesa, bank transfer, or any other approved method. Late payments may incur additional charges.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-exclamation-triangle"></i> 4. Default</h3>
+                            <p>Failure to repay may result in additional charges and legal action. We will work with you to find a solution before taking any legal steps.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-shield-alt"></i> 5. Data Privacy</h3>
+                            <p>Your data is protected and will only be used for loan processing purposes. We comply with all data protection regulations.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeTermsModal()">Close</button>
+                    <button class="btn btn-primary" onclick="closeTermsModal()">I Understand</button>
+                </div>
             </div>
         </div>
+
+        <!-- Privacy Modal -->
+        <div id="privacyModal" class="modal">
+            <div class="modal-content animate-scale terms-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-shield-alt"></i> Privacy Policy</h2>
+                    <button class="modal-close" onclick="closePrivacyModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="terms-text">
+                        <div class="terms-section">
+                            <h3><i class="fas fa-database"></i> Information We Collect</h3>
+                            <p>We collect personal information including your name, email address, phone number, and financial information to process your loan applications.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-lock"></i> How We Protect Your Data</h3>
+                            <p>We use industry-standard encryption and security measures to protect your data. All data is stored securely in compliance with data protection laws.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-share-alt"></i> Information Sharing</h3>
+                            <p>We do not sell or share your personal information with third parties except as required by law or with your explicit consent.</p>
+                        </div>
+                        <div class="terms-section">
+                            <h3><i class="fas fa-cookie"></i> Cookies</h3>
+                            <p>We use cookies to improve your experience and remember your preferences. You can control cookie settings in your browser.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closePrivacyModal()">Close</button>
+                    <button class="btn btn-primary" onclick="closePrivacyModal()">I Understand</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
 
         <script src="js/supabase-config.js"></script>
         <script src="js/login.js"></script>
